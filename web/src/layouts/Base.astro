@@ -1,4 +1,7 @@
 ---
+import { Font } from "astro:assets";
+import "../styles/global.css";
+
 interface Props {
   title: string;
   description?: string;
@@ -11,144 +14,115 @@ const { title, description = "Documentation for the tools and machines at Chattl
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <Font cssVariable="--font-geist" preload />
+    <Font cssVariable="--font-geist-mono" />
     <title>{title} · Chattlab Tool Library</title>
   </head>
   <body>
-    <header class="site-header">
-      <a href="/" class="brand">Chattlab Tool Library</a>
+    <header class="site-header no-print">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="logo" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12.5 3.5a4 4 0 0 0-4.9 5.2L3.2 13.1a1.6 1.6 0 1 0 2.3 2.3l4.4-4.4a4 4 0 0 0 5.2-4.9L12.7 8.5l-2-.6-.6-2 2.4-2.4Z"></path>
+            </svg>
+          </span>
+          <span>Chattlab</span>
+          <span class="slash" aria-hidden="true">/</span>
+          <span class="muted">Tool Library</span>
+        </a>
+      </div>
     </header>
     <main>
       <slot />
     </main>
-    <footer class="site-footer">
-      <a href="/">All machines</a>
-      <a href="/labels">Print QR labels</a>
-      <a href="/_/">Editor login</a>
+    <footer class="site-footer no-print copy-14">
+      <div class="inner">
+        <a href="/">All machines</a>
+        <a href="/labels">Print QR labels</a>
+        <a href="/_/">Editor login</a>
+      </div>
     </footer>
   </body>
 </html>
 
-<style is:global>
-  :root {
-    --bg: #f7f5f0;
-    --surface: #ffffff;
-    --text: #1d1b18;
-    --muted: #5f5a52;
-    --border: #ddd7cc;
-    --accent: #b5470f;
-    --accent-text: #ffffff;
-    --warn-bg: #fff2d6;
-    --warn-border: #e0a526;
-    --danger-bg: #fde5e1;
-    --danger-border: #d0503c;
-    --radius: 10px;
-    color-scheme: light;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #171512;
-      --surface: #221f1b;
-      --text: #f1ede6;
-      --muted: #b0a99d;
-      --border: #3a352e;
-      --accent: #f08a4b;
-      --accent-text: #1d1b18;
-      --warn-bg: #3a2d10;
-      --warn-border: #b98418;
-      --danger-bg: #3b1a15;
-      --danger-border: #c2493a;
-      color-scheme: dark;
-    }
-  }
-
-  *,
-  *::before,
-  *::after {
-    box-sizing: border-box;
-  }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  }
-  main {
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 16px;
-  }
-  a {
-    color: var(--accent);
-  }
-  h1,
-  h2,
-  h3 {
-    line-height: 1.2;
-  }
-  img {
-    max-width: 100%;
-    height: auto;
-  }
-
+<style>
   .site-header {
-    background: var(--text);
-    padding: 12px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: color-mix(in srgb, var(--background-100) 85%, transparent);
+    backdrop-filter: saturate(180%) blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  .inner {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 0 16px;
+  }
+  .site-header .inner {
+    height: 56px;
+    display: flex;
+    align-items: center;
   }
   .brand {
-    color: var(--bg);
-    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .brand:hover {
     text-decoration: none;
   }
+  .logo {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    background: var(--gray-1000);
+    color: var(--background-100);
+  }
+  .logo svg {
+    width: 16px;
+    height: 16px;
+  }
+  .slash {
+    color: var(--gray-500);
+    font-weight: 300;
+  }
+  .brand .muted {
+    font-weight: 500;
+  }
+  main {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 32px 16px 48px;
+  }
   .site-footer {
-    max-width: 960px;
-    margin: 32px auto 0;
-    padding: 16px;
     border-top: 1px solid var(--border);
+    background: var(--background-100);
+  }
+  .site-footer .inner {
     display: flex;
     flex-wrap: wrap;
-    gap: 16px;
-    font-size: 0.9rem;
+    gap: 8px 24px;
+    padding-top: 24px;
+    padding-bottom: 32px;
   }
   .site-footer a {
-    color: var(--muted);
+    color: var(--text-muted);
   }
-
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px;
+  .site-footer a:hover {
+    color: var(--text);
+    text-decoration: none;
   }
-  .muted {
-    color: var(--muted);
-  }
-  .badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 999px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    background: var(--warn-bg);
-    border: 1px solid var(--warn-border);
-  }
-  .rich :first-child {
-    margin-top: 0;
-  }
-  .rich :last-child {
-    margin-bottom: 0;
-  }
-
   @media print {
-    .site-header,
-    .site-footer,
-    .no-print {
-      display: none !important;
-    }
-    body {
-      background: #fff;
-      color: #000;
-    }
     main {
       max-width: none;
       padding: 0;

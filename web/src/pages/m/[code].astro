@@ -3,6 +3,10 @@ import Base from "../../layouts/Base.astro";
 import ContactCard from "../../components/ContactCard.astro";
 import ConsumablesList from "../../components/ConsumablesList.astro";
 import TroubleshootingList from "../../components/TroubleshootingList.astro";
+import Badge from "../../components/ui/Badge.astro";
+import Card from "../../components/ui/Card.astro";
+import Note from "../../components/ui/Note.astro";
+import Section from "../../components/ui/Section.astro";
 import { getMachineByCode, getMachineDetails, fileUrl, displayFilename } from "../../lib/pb";
 
 const machine = await getMachineByCode(Astro.params.code ?? "");
@@ -21,205 +25,278 @@ const details = [
   ["Category", machine.category],
   ["Area", machine.area],
 ].filter(([, value]) => value);
+const mono = new Set(["Code", "Model", "Serial"]);
 const updated = new Date(machine.updated.replace(" ", "T")).toLocaleDateString("en-US", { dateStyle: "medium" });
+const fileType = (file: string) => file.split(".").pop()?.toUpperCase() ?? "";
+
+const jumpLinks = [
+  ["#problem", "Having a problem?"],
+  ["#how-to-use", "How to use"],
+  consumables.length > 0 && ["#consumables", "Consumables"],
+  machine.documents.length > 0 && ["#documents", "Manuals"],
+  ["#details", "Details"],
+].filter(Boolean) as string[][];
 ---
 
 <Base title={machine.name} description={machine.summary || `How to use and troubleshoot the ${machine.name}.`}>
-  <header class="machine-header">
-    {machine.photo && <img src={fileUrl(machine, machine.photo, "800x0")} alt={machine.name} class="photo" />}
-    <div>
+  <nav class="breadcrumb copy-14 no-print" aria-label="Breadcrumb">
+    <a href="/">Machines</a>
+    {
+      machine.area && (
+        <>
+          <span aria-hidden="true">/</span>
+          <span>{machine.area}</span>
+        </>
+      )
+    }
+  </nav>
+
+  <header class:list={["machine-header", { "has-photo": machine.photo }]}>
+    {
+      machine.photo && (
+        <img src={fileUrl(machine, machine.photo, "800x0")} alt={machine.name} class="photo" width="800" />
+      )
+    }
+    <div class="intro">
+      <div class="badges">
+        <Badge variant="gray"><span class="mono">{machine.code}</span></Badge>
+        {machine.training_required && <Badge variant="amber">Training required</Badge>}
+      </div>
       <h1>{machine.name}</h1>
       {makeModel && <p class="muted">{makeModel}</p>}
-      <p class="muted">{[machine.area, machine.code].filter(Boolean).join(" · ")}</p>
-      {machine.training_required && <span class="badge">Training required</span>}
-      {machine.summary && <p>{machine.summary}</p>}
+      {machine.summary && <p class="summary">{machine.summary}</p>}
     </div>
   </header>
 
   <nav class="jump no-print" aria-label="On this page">
-    <a href="#problem">Having a problem?</a>
-    <a href="#how-to-use">How to use</a>
-    {consumables.length > 0 && <a href="#consumables">Consumables</a>}
-    {machine.documents.length > 0 && <a href="#documents">Manuals</a>}
+    {jumpLinks.map(([href, label]) => <a href={href}>{label}</a>)}
   </nav>
 
-  <section id="problem" class="problem">
-    <h2>Having a problem?</h2>
-    <p class="stop">
-      If the machine is unsafe or damaged, <strong>stop, power it off</strong>, put an out-of-service tag on it, and
-      contact the steward below.
-    </p>
+  <Section id="problem" title="Having a problem?" description="Common issues and how to fix them.">
+    <Note variant="error" label="Unsafe or damaged?">
+      Stop and power it off, put an out-of-service tag on it, and contact the steward below.
+    </Note>
     {
       troubleshooting.length > 0 ? (
         <TroubleshootingList entries={troubleshooting} />
       ) : (
-        <p class="muted">No troubleshooting notes yet. Contact the steward below.</p>
+        <Note>No troubleshooting notes yet. Contact the steward below.</Note>
       )
     }
     {
       contacts.length > 0 && (
-        <>
-          <h3>Who to contact</h3>
-          <div class="contacts">
-            {contacts.map((c) => (
-              <ContactCard contact={c} />
-            ))}
-          </div>
-        </>
+        <Card title="Who to contact" padded={false}>
+          {contacts.map((c) => (
+            <ContactCard contact={c} />
+          ))}
+        </Card>
       )
     }
-  </section>
+  </Section>
 
-  <section id="how-to-use">
-    <h2>How to use</h2>
+  <Section id="how-to-use" title="How to use">
     {
       machine.training_required && (
-        <p class="notice">You must complete training before using this machine. Ask a steward to schedule it.</p>
+        <Note variant="warning" label="Training required.">
+          You must complete training before using this machine. Ask a steward to schedule it.
+        </Note>
       )
     }
     {
       machine.safety && (
-        <>
-          <h3>Safety</h3>
-          <div class="rich card" set:html={machine.safety} />
-        </>
+        <Card title="Safety">
+          <div class="prose" set:html={machine.safety} />
+        </Card>
       )
     }
     {
       machine.quick_start && (
-        <>
-          <h3>Quick start</h3>
-          <div class="rich card" set:html={machine.quick_start} />
-        </>
+        <Card title="Quick start">
+          <div class="prose" set:html={machine.quick_start} />
+        </Card>
       )
     }
-    {!machine.safety && !machine.quick_start && <p class="muted">No operating instructions yet.</p>}
-  </section>
+    {!machine.safety && !machine.quick_start && <Note>No operating instructions yet.</Note>}
+  </Section>
 
   {
     consumables.length > 0 && (
-      <section id="consumables">
-        <h2>Consumables & parts</h2>
+      <Section id="consumables" title="Consumables & parts" description="Replacement parts and supplies this machine uses.">
         <ConsumablesList items={consumables} />
-      </section>
+      </Section>
     )
   }
 
   {
     machine.documents.length > 0 && (
-      <section id="documents">
-        <h2>Manuals & schematics</h2>
+      <Section id="documents" title="Manuals & schematics">
         <ul class="docs">
           {machine.documents.map((file) => (
             <li>
               <a href={fileUrl(machine, file)} target="_blank" rel="noopener">
-                {displayFilename(file)}
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M9 1.75H4.25a1 1 0 0 0-1 1v10.5a1 1 0 0 0 1 1h7.5a1 1 0 0 0 1-1V5.5L9 1.75Z" />
+                  <path d="M9 1.75V5.5h3.75" />
+                </svg>
+                <span class="doc-name">{displayFilename(file)}</span>
+                <Badge size="small">{fileType(file)}</Badge>
               </a>
             </li>
           ))}
         </ul>
-      </section>
+      </Section>
     )
   }
 
-  <section id="details">
-    <h2>Details</h2>
-    <dl class="details card">
-      {
-        details.map(([label, value]) => (
-          <>
-            <dt>{label}</dt>
-            <dd>{value}</dd>
-          </>
-        ))
-      }
-    </dl>
-    {machine.specs && <div class="rich card specs" set:html={machine.specs} />}
-    <p class="muted small">Last updated {updated}</p>
-  </section>
+  <Section id="details" title="Details">
+    <Card padded={false}>
+      <dl class="details copy-14">
+        {
+          details.map(([label, value]) => (
+            <div>
+              <dt>{label}</dt>
+              <dd class:list={{ mono: mono.has(label) }}>{value}</dd>
+            </div>
+          ))
+        }
+      </dl>
+      {machine.specs && <div class="prose specs" set:html={machine.specs} />}
+    </Card>
+    <p class="label-12 subtle">Last updated {updated}</p>
+  </Section>
 </Base>
 
 <style>
+  .breadcrumb {
+    display: flex;
+    gap: 8px;
+    color: var(--text-subtle);
+    margin-bottom: 20px;
+  }
+  .breadcrumb a {
+    color: var(--text-muted);
+  }
+  /* On phones the photo is a thumbnail so "Having a problem?" stays near the top of the screen. */
   .machine-header {
     display: grid;
     gap: 16px;
   }
-  @media (min-width: 700px) {
-    .machine-header:has(.photo) {
-      grid-template-columns: 320px 1fr;
-      align-items: start;
-    }
-  }
-  .machine-header h1 {
-    margin: 0 0 4px;
-  }
-  .machine-header p {
-    margin: 4px 0;
+  .machine-header.has-photo {
+    grid-template-columns: 1fr 88px;
+    align-items: start;
   }
   .photo {
-    border-radius: var(--radius);
+    order: 2;
     width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-border-small);
+  }
+  @media (min-width: 720px) {
+    .machine-header.has-photo {
+      grid-template-columns: 340px 1fr;
+      align-items: center;
+      gap: 32px;
+    }
+    .photo {
+      order: 0;
+      aspect-ratio: 4 / 3;
+      border-radius: var(--radius-lg);
+    }
+  }
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .intro p {
+    margin: 4px 0 0;
+  }
+  .summary {
+    color: var(--text-muted);
+    max-width: 60ch;
+    padding-top: 8px;
   }
   .jump {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin: 16px 0;
+    gap: 4px;
+    margin: 28px -16px 0;
+    padding: 0 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-bottom: 1px solid var(--border);
   }
   .jump a {
-    padding: 6px 12px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
+    flex: none;
+    padding: 10px 12px;
+    font-size: 14px;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .jump a:hover {
+    color: var(--text);
     text-decoration: none;
-    font-size: 0.9rem;
-    background: var(--surface);
-  }
-  section {
-    margin-top: 28px;
-    scroll-margin-top: 12px;
-  }
-  .problem {
-    border-left: 4px solid var(--danger-border);
-    padding-left: 12px;
-  }
-  .stop {
-    background: var(--danger-bg);
-    border: 1px solid var(--danger-border);
-    border-radius: var(--radius);
-    padding: 12px 16px;
-  }
-  .notice {
-    background: var(--warn-bg);
-    border: 1px solid var(--warn-border);
-    border-radius: var(--radius);
-    padding: 12px 16px;
-  }
-  .contacts {
-    display: grid;
-    gap: 8px;
+    border-bottom-color: var(--gray-1000);
   }
   .docs {
-    padding-left: 20px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-border-small);
+    overflow: hidden;
   }
-  .docs li {
-    padding: 6px 0;
+  .docs li + li {
+    border-top: 1px solid var(--border);
+  }
+  .docs a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    color: var(--text);
+  }
+  .docs a:hover {
+    background: var(--surface-hover);
+    text-decoration: none;
+  }
+  .docs svg {
+    flex: none;
+    color: var(--text-subtle);
+  }
+  .doc-name {
+    flex: 1;
+    min-width: 0;
+    font-weight: 500;
+    overflow-wrap: anywhere;
   }
   .details {
-    display: grid;
-    grid-template-columns: max-content 1fr;
-    gap: 4px 16px;
     margin: 0;
   }
+  .details div {
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    gap: 12px;
+    padding: 10px 16px;
+  }
+  .details div + div {
+    border-top: 1px solid var(--border);
+  }
   .details dt {
-    color: var(--muted);
+    color: var(--text-subtle);
   }
   .details dd {
     margin: 0;
   }
   .specs {
-    margin-top: 8px;
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
   }
-  .small {
-    font-size: 0.85rem;
+  p.label-12 {
+    margin: 0;
   }
 </style>

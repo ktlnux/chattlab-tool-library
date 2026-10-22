@@ -1,0 +1,195 @@
+@import "./tokens.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Geist type scale */
+h1,
+.heading-32 {
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  margin: 0;
+}
+h2,
+.heading-24 {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  margin: 0;
+}
+h3,
+.heading-16 {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.copy-14 {
+  font-size: 14px;
+  line-height: 20px;
+}
+.label-12 {
+  font-size: 12px;
+  line-height: 16px;
+}
+.mono {
+  font-family: var(--font-mono);
+}
+.muted {
+  color: var(--text-muted);
+}
+.subtle {
+  color: var(--text-subtle);
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+
+/* Form controls (Geist Input / Select) */
+.input {
+  font: inherit;
+  font-size: 14px;
+  height: 40px;
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-border);
+  transition: box-shadow 0.15s ease;
+}
+.input::placeholder {
+  color: var(--text-subtle);
+}
+.input:hover {
+  box-shadow: 0 0 0 1px var(--gray-500);
+}
+.input:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+select.input {
+  appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%238f8f8f' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+/* Rich text written by editors in the PocketBase dashboard */
+.prose {
+  font-size: 15px;
+  line-height: 24px;
+}
+.prose > :first-child {
+  margin-top: 0;
+}
+.prose > :last-child {
+  margin-bottom: 0;
+}
+.prose p,
+.prose ul,
+.prose ol {
+  margin: 0 0 12px;
+}
+.prose ul {
+  padding-left: 20px;
+}
+.prose ul li::marker {
+  color: var(--text-subtle);
+}
+.prose li + li {
+  margin-top: 6px;
+}
+.prose strong {
+  font-weight: 600;
+}
+/* Numbered steps */
+.prose ol {
+  list-style: none;
+  padding: 0;
+  counter-reset: step;
+}
+.prose ol > li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 36px;
+  min-height: 24px;
+}
+.prose ol > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--gray-100);
+  box-shadow: var(--shadow-border);
+  font: 500 12px/1 var(--font-mono);
+  color: var(--text-muted);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+}

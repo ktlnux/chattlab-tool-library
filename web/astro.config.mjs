@@ -1,5 +1,5 @@
 // @ts-check
-import { defineConfig } from 'astro/config';
+import { defineConfig, fontProviders } from 'astro/config';
 
 import node from '@astrojs/node';
 
@@ -11,6 +11,25 @@ export default defineConfig({
   adapter: node({
     mode: 'standalone'
   }),
+  // Geist fonts are downloaded at build time and served from this site.
+  fonts: [
+    {
+      provider: fontProviders.fontsource(),
+      name: 'Geist',
+      cssVariable: '--font-geist',
+      weights: ['100 900'],
+      subsets: ['latin'],
+      fallbacks: ['system-ui', 'sans-serif']
+    },
+    {
+      provider: fontProviders.fontsource(),
+      name: 'Geist Mono',
+      cssVariable: '--font-geist-mono',
+      weights: ['100 900'],
+      subsets: ['latin'],
+      fallbacks: ['ui-monospace', 'monospace']
+    }
+  ],
   vite: {
     server: {
       // In development, mirror production's Caddy routing so /api/files/... links work.

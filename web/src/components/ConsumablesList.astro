@@ -10,39 +10,41 @@ const { items } = Astro.props;
 <ul class="list">
   {
     items.map((item) => (
-      <li class="card">
-        <strong>{item.name}</strong>
-        <dl>
+      <li>
+        <div class="top">
+          <span class="name">{item.name}</span>
+          {item.purchase_url && (
+            <a href={item.purchase_url} rel="noopener" target="_blank" class="copy-14">
+              Where to buy ↗
+            </a>
+          )}
+        </div>
+        <dl class="copy-14">
           {item.spec && (
-            <>
+            <div>
               <dt>Spec</dt>
-              <dd>{item.spec}</dd>
-            </>
+              <dd class="mono">{item.spec}</dd>
+            </div>
           )}
           {item.part_number && (
-            <>
+            <div>
               <dt>Part #</dt>
-              <dd>{item.part_number}</dd>
-            </>
+              <dd class="mono">{item.part_number}</dd>
+            </div>
           )}
           {item.storage_location && (
-            <>
+            <div>
               <dt>Stored</dt>
               <dd>{item.storage_location}</dd>
-            </>
+            </div>
           )}
           {item.notes && (
-            <>
+            <div>
               <dt>Notes</dt>
               <dd>{item.notes}</dd>
-            </>
+            </div>
           )}
         </dl>
-        {item.purchase_url && (
-          <a href={item.purchase_url} rel="noopener" target="_blank">
-            Where to buy
-          </a>
-        )}
       </li>
     ))
   }
@@ -51,21 +53,47 @@ const { items } = Astro.props;
 <style>
   .list {
     list-style: none;
-    padding: 0;
     margin: 0;
-    display: grid;
-    gap: 8px;
+    padding: 0;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-border-small);
+    overflow: hidden;
+  }
+  li {
+    padding: 14px 16px;
+  }
+  li + li {
+    border-top: 1px solid var(--border);
+  }
+  .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .name {
+    font-weight: 500;
   }
   dl {
     display: grid;
-    grid-template-columns: max-content 1fr;
-    gap: 2px 12px;
+    gap: 4px;
     margin: 8px 0 0;
   }
+  dl div {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 12px;
+  }
   dt {
-    color: var(--muted);
+    color: var(--text-subtle);
   }
   dd {
     margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  dd.mono {
+    font-size: 13px;
   }
 </style>

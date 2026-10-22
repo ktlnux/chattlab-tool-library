@@ -1,14 +1,33 @@
 ---
 import Base from "../layouts/Base.astro";
+import Button from "../components/ui/Button.astro";
 
 Astro.response.status = 404;
 ---
 
 <Base title="Not found">
-  <h1>Machine not found</h1>
-  <p>
-    We couldn't find that page. The machine may have been removed, or its sticker may be out of date. Please let a
-    steward know.
-  </p>
-  <p><a href="/">Browse all machines</a></p>
+  <div class="empty">
+    <p class="code mono label-12 subtle">404</p>
+    <h1>Machine not found</h1>
+    <p class="muted">
+      We couldn't find that page. The machine may have been removed, or its sticker may be out of date. Please let a
+      steward know.
+    </p>
+    <Button href="/" variant="secondary">Browse all machines</Button>
+  </div>
 </Base>
+
+<style>
+  .empty {
+    max-width: 440px;
+    margin: 48px auto;
+    text-align: center;
+  }
+  .empty p {
+    margin: 8px 0 24px;
+  }
+  .code {
+    letter-spacing: 0.1em;
+    margin: 0 0 8px !important;
+  }
+</style>

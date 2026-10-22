@@ -1,0 +1,64 @@
+---
+interface Props {
+  variant?: "secondary" | "error" | "warning" | "success";
+  label?: string;
+}
+const { variant = "secondary", label } = Astro.props;
+const icons = {
+  secondary: "M8 14.5a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13ZM8 7.25v4M8 4.75v.01",
+  error: "M8 14.5a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13ZM8 4.5v4.25M8 11.25v.01",
+  warning: "M8 1.75 15 14H1L8 1.75ZM8 6.25v3.5M8 11.75v.01",
+  success: "M8 14.5a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13ZM5.25 8l2 2 3.5-3.75",
+};
+---
+
+<div class:list={["note", variant]} role={variant === "error" ? "alert" : undefined}>
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d={icons[variant]}></path>
+  </svg>
+  <div class="body">
+    {label && <strong>{label} </strong>}
+    <slot />
+  </div>
+</div>
+
+<style>
+  .note {
+    display: flex;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    line-height: 20px;
+  }
+  svg {
+    flex: none;
+    margin-top: 2px;
+  }
+  .body {
+    min-width: 0;
+  }
+  strong {
+    font-weight: 600;
+  }
+  .secondary {
+    background: var(--gray-100);
+    color: var(--text-muted);
+    box-shadow: inset 0 0 0 1px var(--gray-alpha-400);
+  }
+  .error {
+    background: var(--red-100);
+    color: var(--red-900);
+    box-shadow: inset 0 0 0 1px var(--red-400);
+  }
+  .warning {
+    background: var(--amber-100);
+    color: var(--amber-900);
+    box-shadow: inset 0 0 0 1px var(--amber-400);
+  }
+  .success {
+    background: var(--green-100);
+    color: var(--green-900);
+    box-shadow: inset 0 0 0 1px var(--green-400);
+  }
+</style>

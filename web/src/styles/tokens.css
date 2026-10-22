@@ -1,0 +1,156 @@
+/*
+ * Design tokens modeled on Vercel's Geist design system (vercel.com/geist/colors).
+ * Scales follow Geist's numbering: 100-300 backgrounds, 400-600 borders, 700-800 solids, 900-1000 text.
+ * Pages should use the semantic tokens at the bottom, not the raw scales.
+ */
+
+:root {
+  color-scheme: light;
+
+  --background-100: hsl(0 0% 100%);
+  --background-200: hsl(0 0% 98%);
+
+  --gray-100: hsl(0 0% 95%);
+  --gray-200: hsl(0 0% 92%);
+  --gray-300: hsl(0 0% 90%);
+  --gray-400: hsl(0 0% 92%);
+  --gray-500: hsl(0 0% 79%);
+  --gray-600: hsl(0 0% 66%);
+  --gray-700: hsl(0 0% 56%);
+  --gray-800: hsl(0 0% 49%);
+  --gray-900: hsl(0 0% 30%);
+  --gray-1000: hsl(0 0% 9%);
+
+  --gray-alpha-100: #0000000d;
+  --gray-alpha-200: #00000014;
+  --gray-alpha-300: #0000001a;
+  --gray-alpha-400: #00000014;
+
+  --blue-100: oklch(97.32% 0.0141 251.56);
+  --blue-200: oklch(96.29% 0.0195 250.59);
+  --blue-300: oklch(94.58% 0.0293 249.849);
+  --blue-400: oklch(91.58% 0.0473 245.116);
+  --blue-700: oklch(57.61% 0.2508 258.23);
+  --blue-800: oklch(51.51% 0.2399 257.85);
+  --blue-900: oklch(53.18% 0.2399 256.99);
+  --blue-1000: oklch(26.67% 0.1099 254.34);
+
+  --red-100: oklch(96.5% 0.0223 13.09);
+  --red-200: oklch(95.41% 0.0299 14.2526);
+  --red-300: oklch(94.33% 0.0369 15.0115);
+  --red-400: oklch(91.51% 0.0471 19.8);
+  --red-700: oklch(62.56% 0.2524 23.03);
+  --red-800: oklch(58.19% 0.2482 25.15);
+  --red-900: oklch(54.99% 0.232 25.29);
+  --red-1000: oklch(24.8% 0.1041 18.86);
+
+  --amber-100: oklch(97.48% 0.0331 85.79);
+  --amber-200: oklch(96.81% 0.0495 90.2423);
+  --amber-300: oklch(95.93% 0.0636 90.52);
+  --amber-400: oklch(91.02% 0.1322 88.25);
+  --amber-700: oklch(81.87% 0.1969 76.46);
+  --amber-800: oklch(77.21% 0.1991 64.28);
+  --amber-900: oklch(52.79% 0.1496 54.65);
+  --amber-1000: oklch(30.83% 0.099 45.48);
+
+  --green-100: oklch(97.59% 0.0289 145.42);
+  --green-200: oklch(96.92% 0.037 147.15);
+  --green-300: oklch(94.6% 0.0674 144.23);
+  --green-400: oklch(91.49% 0.0976 146.24);
+  --green-700: oklch(64.58% 0.1746 147.27);
+  --green-800: oklch(57.81% 0.1507 147.5);
+  --green-900: oklch(51.75% 0.1453 147.65);
+  --green-1000: oklch(29.15% 0.1197 147.38);
+
+  --shadow-border: 0 0 0 1px #00000014;
+  --shadow-border-small: 0 0 0 1px #00000014, 0 2px 2px #0000000a;
+  --shadow-border-medium: 0 0 0 1px #00000014, 0 2px 2px #0000000a, 0 8px 8px -8px #0000000a;
+  --focus-ring: 0 0 0 2px var(--background-100), 0 0 0 4px var(--blue-700);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --background-100: hsl(0 0% 4%);
+    --background-200: hsl(0 0% 0%);
+
+    --gray-100: hsl(0 0% 10%);
+    --gray-200: hsl(0 0% 12%);
+    --gray-300: hsl(0 0% 16%);
+    --gray-400: hsl(0 0% 18%);
+    --gray-500: hsl(0 0% 27%);
+    --gray-600: hsl(0 0% 53%);
+    --gray-700: hsl(0 0% 56%);
+    --gray-800: hsl(0 0% 49%);
+    --gray-900: hsl(0 0% 63%);
+    --gray-1000: hsl(0 0% 93%);
+
+    --gray-alpha-100: #ffffff0f;
+    --gray-alpha-200: #ffffff17;
+    --gray-alpha-300: #ffffff21;
+    --gray-alpha-400: #ffffff24;
+
+    --blue-100: oklch(22.17% 0.069 259.89);
+    --blue-200: oklch(25.45% 0.0811 255.8);
+    --blue-300: oklch(30.86% 0.1022 255.21);
+    --blue-400: oklch(34.1% 0.121 254.74);
+    --blue-700: oklch(57.61% 0.2321 258.23);
+    --blue-800: oklch(51.51% 0.2307 257.85);
+    --blue-900: oklch(71.7% 0.1648 250.794);
+    --blue-1000: oklch(96.75% 0.0179 242.423);
+
+    --red-100: oklch(22.1% 0.0657 15.11);
+    --red-200: oklch(25.93% 0.0834 19.02);
+    --red-300: oklch(31.47% 0.1105 20.96);
+    --red-400: oklch(35.27% 0.1273 21.23);
+    --red-700: oklch(62.56% 0.2234 23.03);
+    --red-800: oklch(58.01% 0.227 25.12);
+    --red-900: oklch(69.96% 0.2136 22.03);
+    --red-1000: oklch(95.6% 0.0293 6.61);
+
+    --amber-100: oklch(22.46% 0.0538 76.04);
+    --amber-200: oklch(24.95% 0.0642 64.78);
+    --amber-300: oklch(32.34% 0.0837 63.83);
+    --amber-400: oklch(35.53% 0.0903 66.2971);
+    --amber-700: oklch(81.87% 0.1969 76.46);
+    --amber-800: oklch(77.21% 0.1991 64.28);
+    --amber-900: oklch(77.21% 0.1991 64.28);
+    --amber-1000: oklch(96.7% 0.0418 84.59);
+
+    --green-100: oklch(23.09% 0.0716 149.68);
+    --green-200: oklch(27.12% 0.0895 150.09);
+    --green-300: oklch(29.84% 0.096 149.25);
+    --green-400: oklch(34.39% 0.1039 147.78);
+    --green-700: oklch(64.58% 0.199 147.27);
+    --green-800: oklch(57.81% 0.1776 147.5);
+    --green-900: oklch(73.1% 0.2158 148.29);
+    --green-1000: oklch(96.76% 0.056 154.18);
+
+    --shadow-border: 0 0 0 1px #ffffff25;
+    --shadow-border-small: 0 0 0 1px #ffffff25, 0 1px 2px #00000029;
+    --shadow-border-medium: 0 0 0 1px #ffffff25, 0 2px 2px #00000052, 0 8px 8px -8px #00000029;
+  }
+}
+
+:root {
+  /* Semantic tokens */
+  --page: var(--background-200);
+  --surface: var(--background-100);
+  --surface-hover: var(--gray-100);
+  --text: var(--gray-1000);
+  --text-muted: var(--gray-900);
+  --text-subtle: var(--gray-700);
+  --border: var(--gray-alpha-400);
+  --link: var(--blue-900);
+
+  --font-sans: var(--font-geist), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --ease: cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  --content-width: 1000px;
+}

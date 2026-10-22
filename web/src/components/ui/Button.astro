@@ -1,0 +1,87 @@
+---
+import type { HTMLAttributes } from "astro/types";
+
+type Props = (HTMLAttributes<"a"> | HTMLAttributes<"button">) & {
+  href?: string;
+  variant?: "primary" | "secondary" | "tertiary";
+  size?: "small" | "medium" | "large";
+};
+
+const { href, variant = "primary", size = "medium", class: className, ...rest } = Astro.props;
+const classes = ["button", variant, size, className];
+---
+
+{
+  href ? (
+    <a href={href} class:list={classes} {...(rest as HTMLAttributes<"a">)}>
+      <slot />
+    </a>
+  ) : (
+    <button class:list={classes} {...(rest as HTMLAttributes<"button">)}>
+      <slot />
+    </button>
+  )
+}
+
+<style>
+  .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: none;
+    border-radius: var(--radius-sm);
+    font: inherit;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    text-decoration: none;
+    transition:
+      background 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .button:hover {
+    text-decoration: none;
+  }
+  .small {
+    height: 32px;
+    padding: 0 10px;
+    font-size: 14px;
+  }
+  .medium {
+    height: 40px;
+    padding: 0 14px;
+    font-size: 14px;
+  }
+  .large {
+    height: 48px;
+    padding: 0 18px;
+    font-size: 16px;
+    border-radius: var(--radius-md);
+  }
+  .primary {
+    background: var(--gray-1000);
+    color: var(--background-100);
+  }
+  .primary:hover {
+    background: color-mix(in oklab, var(--gray-1000) 85%, var(--background-100));
+  }
+  .secondary {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: var(--shadow-border);
+  }
+  .secondary:hover {
+    background: var(--surface-hover);
+  }
+  .tertiary {
+    background: transparent;
+    color: var(--text);
+  }
+  .tertiary:hover {
+    background: var(--gray-alpha-100);
+  }
+  .button:focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+</style>

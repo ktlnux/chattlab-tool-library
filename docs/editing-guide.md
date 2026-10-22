@@ -36,7 +36,8 @@ in with the account an admin created for you.
 8. **specs**: optional extra technical detail.
 9. **documents**: upload manuals, schematics and wiring diagrams (PDF or images, up to 50 MB each).
    The file name is what members see, so name files clearly first, e.g.
-   `Owners Manual.pdf` or `Wiring Diagram.pdf`.
+   `Owners Manual.pdf` or `Wiring Diagram.pdf`. They show as "Owners manual" and "Wiring diagram",
+   with a PDF tag next to them.
 10. **contacts**: pick who to contact about this machine.
 
 ## Adding troubleshooting entries

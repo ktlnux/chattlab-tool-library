@@ -1,6 +1,7 @@
 ---
 import QRCode from "qrcode";
 import Base from "../layouts/Base.astro";
+import Button from "../components/ui/Button.astro";
 import { listMachines, SITE_URL } from "../lib/pb";
 
 const machines = await listMachines();
@@ -19,25 +20,28 @@ const labels = await Promise.all(
 <Base title="Print QR labels">
   <div class="no-print">
     <h1>Print QR labels</h1>
-    <p class="muted">
+    <p class="muted intro">
       Choose machines and press Print. Labels link to <code>{SITE_URL}/m/&lt;code&gt;</code>. Laminate them or use
       outdoor vinyl stickers in the shop.
     </p>
     <form method="get" class="picker">
       <fieldset>
-        <legend>Machines</legend>
+        <legend class="label-12 subtle">Machines</legend>
         {
           machines.map((m) => (
-            <label>
+            <label class="copy-14">
               <input type="checkbox" name="code" value={m.code} checked={selected.has(m.code)} />
-              {m.code} – {m.name}
+              <span class="mono">{m.code}</span>
+              <span class="muted">{m.name}</span>
             </label>
           ))
         }
       </fieldset>
-      <button type="submit">Show selected</button>
-      <a href="/labels">Show all</a>
-      <button type="button" onclick="window.print()">Print</button>
+      <div class="actions">
+        <Button type="submit" variant="secondary" size="small">Show selected</Button>
+        <Button href="/labels" variant="tertiary" size="small">Show all</Button>
+        <Button type="button" size="small" onclick="window.print()">Print</Button>
+      </div>
     </form>
   </div>
 
@@ -59,18 +63,42 @@ const labels = await Promise.all(
 </Base>
 
 <style>
+  .intro {
+    margin: 8px 0 24px;
+  }
   .picker fieldset {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 4px 12px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    margin-bottom: 12px;
+    margin: 0 0 12px;
+    padding: 12px 16px 16px;
+    border: none;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-border-small);
   }
-  .picker button {
-    font: inherit;
-    padding: 8px 14px;
-    margin-right: 8px;
+  .picker legend {
+    float: left;
+    width: 100%;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .picker label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+  }
+  .picker input {
+    accent-color: var(--gray-1000);
+    width: 16px;
+    height: 16px;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
   }
   .sheet {
     display: grid;
@@ -110,7 +138,7 @@ const labels = await Promise.all(
     line-height: 1.15;
   }
   .code {
-    font: 700 16pt ui-monospace, monospace;
+    font: 600 16pt var(--font-mono);
   }
   .hint {
     font-size: 8pt;

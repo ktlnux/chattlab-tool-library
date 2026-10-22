@@ -101,7 +101,9 @@ export function fileUrl(record: BaseRecord, filename: string, thumb?: string) {
   return thumb ? `${url}?thumb=${thumb}` : url;
 }
 
-// PocketBase appends "_<10 random chars>" to uploaded filenames; strip it for display.
+// PocketBase lowercases uploaded filenames and appends "_<10 random chars>";
+// turn "owners_manual_l53u7grcvk.pdf" into "Owners manual" for display.
 export function displayFilename(filename: string) {
-  return filename.replace(/_[a-z0-9]{10}(\.[^.]+)$/i, "$1").replace(/_/g, " ");
+  const name = filename.replace(/(_[a-z0-9]{10})?\.[^.]+$/i, "").replace(/[_-]+/g, " ").trim();
+  return name.charAt(0).toUpperCase() + name.slice(1);
 }

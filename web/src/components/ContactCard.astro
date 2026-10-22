@@ -1,36 +1,58 @@
 ---
 import type { Contact } from "../lib/pb";
+import Button from "./ui/Button.astro";
 
 interface Props {
   contact: Contact;
 }
 const { contact } = Astro.props;
 const link = /^(https?:|mailto:|tel:)/i.test(contact.contact_link) ? contact.contact_link : "";
+const initials = contact.name
+  .split(/\s+/)
+  .slice(0, 2)
+  .map((word) => word[0])
+  .join("")
+  .toUpperCase();
 ---
 
-<div class="contact card">
-  <div>
-    <strong>{contact.name}</strong>
-    {contact.role && <div class="muted">{contact.role}</div>}
-    {contact.contact_method && <div>{contact.contact_method}</div>}
+<div class="contact">
+  <span class="avatar" aria-hidden="true">{initials}</span>
+  <div class="info">
+    <div class="name">{contact.name}</div>
+    {contact.role && <div class="copy-14 muted">{contact.role}</div>}
+    {contact.contact_method && <div class="copy-14 subtle">{contact.contact_method}</div>}
   </div>
-  {link && <a class="button" href={link}>Message</a>}
+  {link && <Button href={link} size="small">Message</Button>}
 </div>
 
 <style>
   .contact {
     display: flex;
-    justify-content: space-between;
     align-items: center;
     gap: 12px;
+    padding: 14px 16px;
   }
-  .button {
+  .contact + :global(.contact) {
+    border-top: 1px solid var(--border);
+  }
+  .avatar {
     flex: none;
-    background: var(--accent);
-    color: var(--accent-text);
-    text-decoration: none;
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--gray-100);
+    box-shadow: var(--shadow-border);
+    font-size: 13px;
     font-weight: 600;
-    padding: 10px 16px;
-    border-radius: var(--radius);
+    color: var(--text-muted);
+  }
+  .info {
+    flex: 1;
+    min-width: 0;
+  }
+  .name {
+    font-weight: 500;
   }
 </style>

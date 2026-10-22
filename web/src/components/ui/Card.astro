@@ -1,0 +1,32 @@
+---
+interface Props {
+  title?: string;
+  padded?: boolean;
+  class?: string;
+}
+const { title, padded = true, class: className } = Astro.props;
+---
+
+<div class:list={["card", className]}>
+  {title && <div class="card-header heading-16">{title}</div>}
+  <div class:list={[{ padded }]}>
+    <slot />
+  </div>
+</div>
+
+<style>
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-border-small);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--background-200);
+  }
+  .padded {
+    padding: 16px;
+  }
+</style>
