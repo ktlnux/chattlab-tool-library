@@ -1,0 +1,225 @@
+---
+import Base from "../../layouts/Base.astro";
+import ContactCard from "../../components/ContactCard.astro";
+import ConsumablesList from "../../components/ConsumablesList.astro";
+import TroubleshootingList from "../../components/TroubleshootingList.astro";
+import { getMachineByCode, getMachineDetails, fileUrl, displayFilename } from "../../lib/pb";
+
+const machine = await getMachineByCode(Astro.params.code ?? "");
+if (!machine) {
+  return Astro.rewrite("/404");
+}
+
+const { troubleshooting, consumables } = await getMachineDetails(machine);
+const contacts = machine.expand?.contacts ?? [];
+const makeModel = [machine.make, machine.model].filter(Boolean).join(" ");
+const details = [
+  ["Code", machine.code],
+  ["Make", machine.make],
+  ["Model", machine.model],
+  ["Serial", machine.serial],
+  ["Category", machine.category],
+  ["Area", machine.area],
+].filter(([, value]) => value);
+const updated = new Date(machine.updated.replace(" ", "T")).toLocaleDateString("en-US", { dateStyle: "medium" });
+---
+
+<Base title={machine.name} description={machine.summary || `How to use and troubleshoot the ${machine.name}.`}>
+  <header class="machine-header">
+    {machine.photo && <img src={fileUrl(machine, machine.photo, "800x0")} alt={machine.name} class="photo" />}
+    <div>
+      <h1>{machine.name}</h1>
+      {makeModel && <p class="muted">{makeModel}</p>}
+      <p class="muted">{[machine.area, machine.code].filter(Boolean).join(" · ")}</p>
+      {machine.training_required && <span class="badge">Training required</span>}
+      {machine.summary && <p>{machine.summary}</p>}
+    </div>
+  </header>
+
+  <nav class="jump no-print" aria-label="On this page">
+    <a href="#problem">Having a problem?</a>
+    <a href="#how-to-use">How to use</a>
+    {consumables.length > 0 && <a href="#consumables">Consumables</a>}
+    {machine.documents.length > 0 && <a href="#documents">Manuals</a>}
+  </nav>
+
+  <section id="problem" class="problem">
+    <h2>Having a problem?</h2>
+    <p class="stop">
+      If the machine is unsafe or damaged, <strong>stop, power it off</strong>, put an out-of-service tag on it, and
+      contact the steward below.
+    </p>
+    {
+      troubleshooting.length > 0 ? (
+        <TroubleshootingList entries={troubleshooting} />
+      ) : (
+        <p class="muted">No troubleshooting notes yet. Contact the steward below.</p>
+      )
+    }
+    {
+      contacts.length > 0 && (
+        <>
+          <h3>Who to contact</h3>
+          <div class="contacts">
+            {contacts.map((c) => (
+              <ContactCard contact={c} />
+            ))}
+          </div>
+        </>
+      )
+    }
+  </section>
+
+  <section id="how-to-use">
+    <h2>How to use</h2>
+    {
+      machine.training_required && (
+        <p class="notice">You must complete training before using this machine. Ask a steward to schedule it.</p>
+      )
+    }
+    {
+      machine.safety && (
+        <>
+          <h3>Safety</h3>
+          <div class="rich card" set:html={machine.safety} />
+        </>
+      )
+    }
+    {
+      machine.quick_start && (
+        <>
+          <h3>Quick start</h3>
+          <div class="rich card" set:html={machine.quick_start} />
+        </>
+      )
+    }
+    {!machine.safety && !machine.quick_start && <p class="muted">No operating instructions yet.</p>}
+  </section>
+
+  {
+    consumables.length > 0 && (
+      <section id="consumables">
+        <h2>Consumables & parts</h2>
+        <ConsumablesList items={consumables} />
+      </section>
+    )
+  }
+
+  {
+    machine.documents.length > 0 && (
+      <section id="documents">
+        <h2>Manuals & schematics</h2>
+        <ul class="docs">
+          {machine.documents.map((file) => (
+            <li>
+              <a href={fileUrl(machine, file)} target="_blank" rel="noopener">
+                {displayFilename(file)}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+
+  <section id="details">
+    <h2>Details</h2>
+    <dl class="details card">
+      {
+        details.map(([label, value]) => (
+          <>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </>
+        ))
+      }
+    </dl>
+    {machine.specs && <div class="rich card specs" set:html={machine.specs} />}
+    <p class="muted small">Last updated {updated}</p>
+  </section>
+</Base>
+
+<style>
+  .machine-header {
+    display: grid;
+    gap: 16px;
+  }
+  @media (min-width: 700px) {
+    .machine-header:has(.photo) {
+      grid-template-columns: 320px 1fr;
+      align-items: start;
+    }
+  }
+  .machine-header h1 {
+    margin: 0 0 4px;
+  }
+  .machine-header p {
+    margin: 4px 0;
+  }
+  .photo {
+    border-radius: var(--radius);
+    width: 100%;
+  }
+  .jump {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 16px 0;
+  }
+  .jump a {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    background: var(--surface);
+  }
+  section {
+    margin-top: 28px;
+    scroll-margin-top: 12px;
+  }
+  .problem {
+    border-left: 4px solid var(--danger-border);
+    padding-left: 12px;
+  }
+  .stop {
+    background: var(--danger-bg);
+    border: 1px solid var(--danger-border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+  }
+  .notice {
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+  }
+  .contacts {
+    display: grid;
+    gap: 8px;
+  }
+  .docs {
+    padding-left: 20px;
+  }
+  .docs li {
+    padding: 6px 0;
+  }
+  .details {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 4px 16px;
+    margin: 0;
+  }
+  .details dt {
+    color: var(--muted);
+  }
+  .details dd {
+    margin: 0;
+  }
+  .specs {
+    margin-top: 8px;
+  }
+  .small {
+    font-size: 0.85rem;
+  }
+</style>

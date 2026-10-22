@@ -1,0 +1,7 @@
+.env
+.DS_Store
+
+# PocketBase data (database, uploads, backups) and local binary
+pb_data/
+pocketbase/pb_data/
+pocketbase/bin/

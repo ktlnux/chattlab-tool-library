@@ -1,0 +1,137 @@
+---
+import Base from "../layouts/Base.astro";
+import { listMachines, fileUrl } from "../lib/pb";
+
+const machines = await listMachines();
+const unique = (values: string[]) => [...new Set(values.filter(Boolean))].sort();
+const areas = unique(machines.map((m) => m.area));
+const categories = unique(machines.map((m) => m.category));
+---
+
+<Base title="All machines">
+  <h1>Machines</h1>
+  <p class="muted">Every machine has a QR sticker that links to its page. Browse or search them all here.</p>
+
+  <form class="filters no-print" id="filters" onsubmit="return false">
+    <input type="search" name="q" placeholder="Search name, make, model, code…" aria-label="Search machines" />
+    <select name="area" aria-label="Filter by area">
+      <option value="">All areas</option>
+      {areas.map((a) => <option value={a}>{a}</option>)}
+    </select>
+    <select name="category" aria-label="Filter by category">
+      <option value="">All categories</option>
+      {categories.map((c) => <option value={c}>{c}</option>)}
+    </select>
+  </form>
+
+  <ul class="grid" id="machine-list">
+    {
+      machines.map((m) => (
+        <li
+          data-area={m.area}
+          data-category={m.category}
+          data-search={[m.code, m.name, m.make, m.model, m.category, m.area].join(" ").toLowerCase()}
+        >
+          <a href={`/m/${m.code}`} class="card machine-card">
+            {m.photo ? (
+              <img src={fileUrl(m, m.photo, "800x0")} alt="" loading="lazy" />
+            ) : (
+              <div class="placeholder" aria-hidden="true">{m.code}</div>
+            )}
+            <span class="name">{m.name}</span>
+            <span class="muted">{[m.make, m.model].filter(Boolean).join(" ") || m.category}</span>
+            <span class="muted small">{m.area} · {m.code}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+  <p id="empty" class="muted" hidden>No machines match.</p>
+  {machines.length === 0 && <p class="muted">No machines have been added yet.</p>}
+</Base>
+
+<script>
+  const form = document.getElementById("filters") as HTMLFormElement;
+  const items = [...document.querySelectorAll<HTMLLIElement>("#machine-list > li")];
+  const empty = document.getElementById("empty")!;
+
+  function apply() {
+    const data = new FormData(form);
+    const q = String(data.get("q") ?? "").trim().toLowerCase();
+    const area = String(data.get("area") ?? "");
+    const category = String(data.get("category") ?? "");
+    let shown = 0;
+    for (const li of items) {
+      const match =
+        (!q || li.dataset.search!.includes(q)) &&
+        (!area || li.dataset.area === area) &&
+        (!category || li.dataset.category === category);
+      li.hidden = !match;
+      if (match) shown++;
+    }
+    empty.hidden = shown > 0 || items.length === 0;
+  }
+  form.addEventListener("input", apply);
+</script>
+
+<style>
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .filters input,
+  .filters select {
+    font: inherit;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+  }
+  .filters input {
+    flex: 1 1 240px;
+  }
+  .grid {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .machine-card {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    height: 100%;
+    text-decoration: none;
+    color: inherit;
+  }
+  .machine-card:hover {
+    border-color: var(--accent);
+  }
+  .machine-card img,
+  .placeholder {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: 6px;
+    margin-bottom: 8px;
+  }
+  .placeholder {
+    display: grid;
+    place-items: center;
+    background: var(--bg);
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 1.4rem;
+  }
+  .name {
+    font-weight: 650;
+  }
+  .small {
+    font-size: 0.85rem;
+  }
+</style>

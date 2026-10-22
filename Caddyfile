@@ -1,0 +1,18 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# PocketBase: REST API, uploaded files (/api/files/...) and the admin dashboard (/_/).
+	# Note: "/_" must not be a prefix match, or it would swallow Astro's /_astro/ assets.
+	@pocketbase path /api/* /_ /_/*
+	handle @pocketbase {
+		reverse_proxy pocketbase:8090
+	}
+
+	handle {
+		reverse_proxy web:4321
+	}
+}

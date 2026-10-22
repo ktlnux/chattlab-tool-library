@@ -1,0 +1,127 @@
+---
+import QRCode from "qrcode";
+import Base from "../layouts/Base.astro";
+import { listMachines, SITE_URL } from "../lib/pb";
+
+const machines = await listMachines();
+const selected = new Set(Astro.url.searchParams.getAll("code"));
+const toPrint = selected.size ? machines.filter((m) => selected.has(m.code)) : machines;
+
+const labels = await Promise.all(
+  toPrint.map(async (m) => {
+    const url = `${SITE_URL}/m/${m.code}`;
+    const svg = await QRCode.toString(url, { type: "svg", margin: 0, errorCorrectionLevel: "M" });
+    return { machine: m, url, svg };
+  })
+);
+---
+
+<Base title="Print QR labels">
+  <div class="no-print">
+    <h1>Print QR labels</h1>
+    <p class="muted">
+      Choose machines and press Print. Labels link to <code>{SITE_URL}/m/&lt;code&gt;</code>. Laminate them or use
+      outdoor vinyl stickers in the shop.
+    </p>
+    <form method="get" class="picker">
+      <fieldset>
+        <legend>Machines</legend>
+        {
+          machines.map((m) => (
+            <label>
+              <input type="checkbox" name="code" value={m.code} checked={selected.has(m.code)} />
+              {m.code} – {m.name}
+            </label>
+          ))
+        }
+      </fieldset>
+      <button type="submit">Show selected</button>
+      <a href="/labels">Show all</a>
+      <button type="button" onclick="window.print()">Print</button>
+    </form>
+  </div>
+
+  <div class="sheet">
+    {
+      labels.map(({ machine, url, svg }) => (
+        <div class="label">
+          <div class="qr" set:html={svg} />
+          <div class="text">
+            <strong>{machine.name}</strong>
+            <span class="code">{machine.code}</span>
+            <span class="hint">Scan for manuals, help &amp; troubleshooting</span>
+            <span class="url">{url.replace(/^https?:\/\//, "")}</span>
+          </div>
+        </div>
+      ))
+    }
+  </div>
+</Base>
+
+<style>
+  .picker fieldset {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 4px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+  }
+  .picker button {
+    font: inherit;
+    padding: 8px 14px;
+    margin-right: 8px;
+  }
+  .sheet {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 3.5in);
+    gap: 0.25in;
+    margin-top: 24px;
+  }
+  .label {
+    width: 3.5in;
+    height: 2in;
+    display: flex;
+    gap: 0.15in;
+    align-items: center;
+    padding: 0.15in;
+    background: #fff;
+    color: #000;
+    border: 1px dashed #999;
+    break-inside: avoid;
+  }
+  .qr {
+    width: 1.6in;
+    flex: none;
+  }
+  .qr :global(svg) {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .text strong {
+    font-size: 13pt;
+    line-height: 1.15;
+  }
+  .code {
+    font: 700 16pt ui-monospace, monospace;
+  }
+  .hint {
+    font-size: 8pt;
+  }
+  .url {
+    font-size: 7pt;
+    overflow-wrap: anywhere;
+  }
+  @media print {
+    .sheet {
+      margin: 0;
+    }
+  }
+</style>

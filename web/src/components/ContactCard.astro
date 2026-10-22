@@ -1,0 +1,36 @@
+---
+import type { Contact } from "../lib/pb";
+
+interface Props {
+  contact: Contact;
+}
+const { contact } = Astro.props;
+const link = /^(https?:|mailto:|tel:)/i.test(contact.contact_link) ? contact.contact_link : "";
+---
+
+<div class="contact card">
+  <div>
+    <strong>{contact.name}</strong>
+    {contact.role && <div class="muted">{contact.role}</div>}
+    {contact.contact_method && <div>{contact.contact_method}</div>}
+  </div>
+  {link && <a class="button" href={link}>Message</a>}
+</div>
+
+<style>
+  .contact {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .button {
+    flex: none;
+    background: var(--accent);
+    color: var(--accent-text);
+    text-decoration: none;
+    font-weight: 600;
+    padding: 10px 16px;
+    border-radius: var(--radius);
+  }
+</style>

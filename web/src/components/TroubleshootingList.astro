@@ -1,0 +1,45 @@
+---
+import type { TroubleshootingEntry } from "../lib/pb";
+
+interface Props {
+  entries: TroubleshootingEntry[];
+}
+const { entries } = Astro.props;
+---
+
+<div class="list">
+  {
+    entries.map((entry) => (
+      <details class="card">
+        <summary>{entry.symptom}</summary>
+        {entry.likely_cause && (
+          <p>
+            <strong>Likely cause:</strong> {entry.likely_cause}
+          </p>
+        )}
+        {entry.fix && <div class="rich" set:html={entry.fix} />}
+      </details>
+    ))
+  }
+</div>
+
+<style>
+  .list {
+    display: grid;
+    gap: 8px;
+  }
+  details {
+    padding: 0;
+  }
+  summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding: 14px 16px;
+  }
+  details[open] summary {
+    border-bottom: 1px solid var(--border);
+  }
+  details > :not(summary) {
+    margin: 12px 16px;
+  }
+</style>

@@ -1,0 +1,40 @@
+# Production stack: Caddy (HTTPS) -> Astro web app + PocketBase.
+# Usage: cp .env.example .env, edit it, then `docker compose up -d --build`.
+services:
+  pocketbase:
+    build: ./pocketbase
+    restart: unless-stopped
+    volumes:
+      # All content, uploaded files and backups live here. Copy this folder to move hosts.
+      - ./pb_data:/pb/pb_data
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    environment:
+      PB_URL: http://pocketbase:8090
+      SITE_URL: https://${DOMAIN}
+    depends_on:
+      - pocketbase
+
+  caddy:
+    image: caddy:2.11
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - pocketbase
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,71 @@
+---
+import type { Consumable } from "../lib/pb";
+
+interface Props {
+  items: Consumable[];
+}
+const { items } = Astro.props;
+---
+
+<ul class="list">
+  {
+    items.map((item) => (
+      <li class="card">
+        <strong>{item.name}</strong>
+        <dl>
+          {item.spec && (
+            <>
+              <dt>Spec</dt>
+              <dd>{item.spec}</dd>
+            </>
+          )}
+          {item.part_number && (
+            <>
+              <dt>Part #</dt>
+              <dd>{item.part_number}</dd>
+            </>
+          )}
+          {item.storage_location && (
+            <>
+              <dt>Stored</dt>
+              <dd>{item.storage_location}</dd>
+            </>
+          )}
+          {item.notes && (
+            <>
+              <dt>Notes</dt>
+              <dd>{item.notes}</dd>
+            </>
+          )}
+        </dl>
+        {item.purchase_url && (
+          <a href={item.purchase_url} rel="noopener" target="_blank">
+            Where to buy
+          </a>
+        )}
+      </li>
+    ))
+  }
+</ul>
+
+<style>
+  .list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 8px;
+  }
+  dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 2px 12px;
+    margin: 8px 0 0;
+  }
+  dt {
+    color: var(--muted);
+  }
+  dd {
+    margin: 0;
+  }
+</style>

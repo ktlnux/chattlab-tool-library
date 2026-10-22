@@ -1,0 +1,157 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+const { title, description = "Documentation for the tools and machines at Chattlab." } = Astro.props;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title} · Chattlab Tool Library</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <a href="/" class="brand">Chattlab Tool Library</a>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <a href="/">All machines</a>
+      <a href="/labels">Print QR labels</a>
+      <a href="/_/">Editor login</a>
+    </footer>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --text: #1d1b18;
+    --muted: #5f5a52;
+    --border: #ddd7cc;
+    --accent: #b5470f;
+    --accent-text: #ffffff;
+    --warn-bg: #fff2d6;
+    --warn-border: #e0a526;
+    --danger-bg: #fde5e1;
+    --danger-border: #d0503c;
+    --radius: 10px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171512;
+      --surface: #221f1b;
+      --text: #f1ede6;
+      --muted: #b0a99d;
+      --border: #3a352e;
+      --accent: #f08a4b;
+      --accent-text: #1d1b18;
+      --warn-bg: #3a2d10;
+      --warn-border: #b98418;
+      --danger-bg: #3b1a15;
+      --danger-border: #c2493a;
+      color-scheme: dark;
+    }
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+  a {
+    color: var(--accent);
+  }
+  h1,
+  h2,
+  h3 {
+    line-height: 1.2;
+  }
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .site-header {
+    background: var(--text);
+    padding: 12px 16px;
+  }
+  .brand {
+    color: var(--bg);
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .site-footer {
+    max-width: 960px;
+    margin: 32px auto 0;
+    padding: 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-size: 0.9rem;
+  }
+  .site-footer a {
+    color: var(--muted);
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .muted {
+    color: var(--muted);
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+  }
+  .rich :first-child {
+    margin-top: 0;
+  }
+  .rich :last-child {
+    margin-bottom: 0;
+  }
+
+  @media print {
+    .site-header,
+    .site-footer,
+    .no-print {
+      display: none !important;
+    }
+    body {
+      background: #fff;
+      color: #000;
+    }
+    main {
+      max-width: none;
+      padding: 0;
+    }
+  }
+</style>
