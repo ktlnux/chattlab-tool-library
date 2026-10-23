@@ -6,39 +6,64 @@ import Note from "../components/ui/Note.astro";
 
 <Base title="Sign in">
   <div class="auth-card">
-    <form id="email-step" class="step">
+    <form id="signin" class="step">
       <h1 class="heading-24">Sign in</h1>
+      <label class="field">
+        <span class="label">Email</span>
+        <input class="input" type="email" name="email" required autocomplete="email" inputmode="email" />
+      </label>
+      <label class="field">
+        <span class="label-row">
+          <span class="label">Password</span>
+          <button type="button" class="link" data-show="reset">Forgot password?</button>
+        </span>
+        <input class="input" type="password" name="password" required autocomplete="current-password" />
+      </label>
+      <div class="error" hidden><Note variant="error"><span class="error-text"></span></Note></div>
+      <Button type="submit" class="submit">Sign in</Button>
       <p class="copy-14 muted">
-        We'll email you a 6-digit code; no password needed. If you don't have an account yet, this creates one.
+        New here? <button type="button" class="link" data-show="signup">Create an account</button>
       </p>
+    </form>
+
+    <form id="signup" class="step" hidden>
+      <h1 class="heading-24">Create an account</h1>
+      <label class="field">
+        <span class="label">Email</span>
+        <input class="input" type="email" name="email" required autocomplete="email" inputmode="email" />
+      </label>
+      <label class="field">
+        <span class="label">Password</span>
+        <input class="input" type="password" name="password" required minlength="8" autocomplete="new-password" />
+        <span class="hint muted">At least 8 characters.</span>
+      </label>
+      <label class="field">
+        <span class="label">Confirm password</span>
+        <input class="input" type="password" name="passwordConfirm" required minlength="8" autocomplete="new-password" />
+      </label>
+      <div class="error" hidden><Note variant="error"><span class="error-text"></span></Note></div>
+      <Button type="submit" class="submit">Create account</Button>
+      <p class="copy-14 muted">
+        Already have an account? <button type="button" class="link" data-show="signin">Sign in</button>
+      </p>
+    </form>
+
+    <form id="reset" class="step" hidden>
+      <h1 class="heading-24">Reset your password</h1>
+      <p class="copy-14 muted">We'll email you a link to choose a new password.</p>
       <label class="field">
         <span class="label">Email</span>
         <input class="input" type="email" name="email" required autocomplete="email" inputmode="email" />
       </label>
       <div class="error" hidden><Note variant="error"><span class="error-text"></span></Note></div>
-      <Button type="submit" class="submit">Email me a code</Button>
-    </form>
-
-    <form id="code-step" class="step" hidden>
-      <h1 class="heading-24">Check your email</h1>
-      <p class="copy-14 muted">Enter the code we sent to <strong class="sent-to"></strong>. It expires in 10 minutes.</p>
-      <label class="field">
-        <span class="label">Code</span>
-        <input
-          class="input code"
-          name="code"
-          required
-          inputmode="numeric"
-          autocomplete="one-time-code"
-          pattern="[0-9]*"
-          maxlength="6"
-        />
-      </label>
-      <div class="error" hidden><Note variant="error"><span class="error-text"></span></Note></div>
-      <Button type="submit" class="submit">Sign in</Button>
-      <p class="copy-14 muted">
-        Didn't get it? Check spam, or <button type="button" class="link restart">use a different email</button>.
-      </p>
+      <div class="sent" hidden>
+        <Note variant="success">
+          If there's an account for that email, a reset link is on its way. Check spam if it doesn't arrive, or ask a
+          steward to reset your password.
+        </Note>
+      </div>
+      <Button type="submit" class="submit">Email me a link</Button>
+      <p class="copy-14 muted"><button type="button" class="link" data-show="signin">Back to sign in</button></p>
     </form>
   </div>
 </Base>
@@ -47,13 +72,28 @@ import Note from "../components/ui/Note.astro";
   import { ClientResponseError } from "pocketbase";
   import { pb, currentMember, missingContactInfo, errorMessage, type Member } from "../lib/client";
 
-  const emailForm = document.getElementById("email-step") as HTMLFormElement;
-  const codeForm = document.getElementById("code-step") as HTMLFormElement;
+  const forms = {
+    signin: document.getElementById("signin") as HTMLFormElement,
+    signup: document.getElementById("signup") as HTMLFormElement,
+    reset: document.getElementById("reset") as HTMLFormElement,
+  };
   const params = new URLSearchParams(window.location.search);
   // Only return to pages on this site.
   const requested = params.get("next") ?? "/";
   const next = requested.startsWith("/") && !requested.startsWith("//") ? requested : "/";
-  let otpId = "";
+
+  function show(name: keyof typeof forms) {
+    // Carry the email over so it doesn't have to be typed twice.
+    const email = Object.values(forms).find((form) => !form.hidden)?.querySelector<HTMLInputElement>("[name=email]")?.value;
+    for (const [key, form] of Object.entries(forms)) form.hidden = key !== name;
+    const emailInput = forms[name].querySelector<HTMLInputElement>("[name=email]")!;
+    if (email && !emailInput.value) emailInput.value = email;
+    (emailInput.value ? forms[name].querySelector<HTMLInputElement>("[name=password]") ?? emailInput : emailInput).focus();
+  }
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>("[data-show]")) {
+    button.addEventListener("click", () => show(button.dataset.show as keyof typeof forms));
+  }
 
   function showError(form: HTMLFormElement, message: string) {
     form.querySelector<HTMLElement>(".error-text")!.textContent = message;
@@ -85,55 +125,62 @@ import Note from "../components/ui/Note.astro";
 
   if (currentMember()) finish(currentMember()!);
 
-  emailForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const email = String(new FormData(emailForm).get("email") ?? "").trim();
-    if (!email) return showError(emailForm, "Enter your email address.");
-    try {
-      await busy(emailForm, "Sending…", async () => {
-        // Codes are only sent to existing accounts, so create one on first sign-in.
-        // The password is never used: members always sign in with emailed codes.
-        // (PocketBase passwords are at most 71 characters.)
-        const password = (crypto.randomUUID() + crypto.randomUUID()).replaceAll("-", "").slice(0, 60);
-        try {
-          await pb.collection("users").create({ email, password, passwordConfirm: password });
-        } catch (err) {
-          const alreadyExists = err instanceof ClientResponseError && err.response?.data?.email?.code === "validation_not_unique";
-          if (!alreadyExists) throw err;
-        }
-        ({ otpId } = await pb.collection("users").requestOTP(email));
-      });
-      codeForm.querySelector(".sent-to")!.textContent = email;
-      emailForm.hidden = true;
-      codeForm.hidden = false;
-      codeForm.querySelector<HTMLInputElement>("[name=code]")!.focus();
-    } catch (err) {
-      showError(emailForm, errorMessage(err, "Couldn't send a code. Please try again."));
-    }
-  });
+  function read(form: HTMLFormElement) {
+    const data = new FormData(form);
+    return {
+      email: String(data.get("email") ?? "").trim(),
+      password: String(data.get("password") ?? ""),
+      passwordConfirm: String(data.get("passwordConfirm") ?? ""),
+    };
+  }
 
-  codeForm.addEventListener("submit", async (event) => {
+  forms.signin.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const code = String(new FormData(codeForm).get("code") ?? "").replace(/\D/g, "");
-    if (code.length !== 6) return showError(codeForm, "Enter the 6-digit code from the email.");
+    const { email, password } = read(forms.signin);
     try {
-      const auth = await busy(codeForm, "Signing in…", () => pb.collection("users").authWithOTP(otpId, code));
+      const auth = await busy(forms.signin, "Signing in…", () => pb.collection("users").authWithPassword(email, password));
       finish(auth.record as Member);
     } catch (err) {
       showError(
-        codeForm,
+        forms.signin,
         err instanceof ClientResponseError && err.status === 400
-          ? "That code didn't work. Check it, or request a new one."
+          ? "That email and password don't match. Check them, or reset your password."
           : errorMessage(err, "Couldn't sign you in. Please try again.")
       );
     }
   });
 
-  codeForm.querySelector(".restart")!.addEventListener("click", () => {
-    codeForm.reset();
-    codeForm.hidden = true;
-    emailForm.hidden = false;
-    emailForm.querySelector<HTMLInputElement>("[name=email]")!.focus();
+  forms.signup.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const { email, password, passwordConfirm } = read(forms.signup);
+    if (password !== passwordConfirm) return showError(forms.signup, "The passwords don't match.");
+    try {
+      const auth = await busy(forms.signup, "Creating account…", async () => {
+        await pb.collection("users").create({ email, password, passwordConfirm });
+        return pb.collection("users").authWithPassword(email, password);
+      });
+      finish(auth.record as Member);
+    } catch (err) {
+      const taken = err instanceof ClientResponseError && err.response?.data?.email?.code === "validation_not_unique";
+      showError(
+        forms.signup,
+        taken
+          ? "There's already an account with that email. Sign in, or reset your password."
+          : errorMessage(err, "Couldn't create your account. Please try again.")
+      );
+    }
+  });
+
+  forms.reset.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const { email } = read(forms.reset);
+    forms.reset.querySelector<HTMLElement>(".sent")!.hidden = true;
+    try {
+      await busy(forms.reset, "Sending…", () => pb.collection("users").requestPasswordReset(email));
+      forms.reset.querySelector<HTMLElement>(".sent")!.hidden = false;
+    } catch (err) {
+      showError(forms.reset, errorMessage(err, "Couldn't send the email. Please try again."));
+    }
   });
 </script>
 
@@ -163,15 +210,14 @@ import Note from "../components/ui/Note.astro";
     display: grid;
     gap: 6px;
   }
+  .label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
   .label {
     font-size: 14px;
     font-weight: 500;
-  }
-  .code {
-    font-family: var(--font-mono);
-    font-size: 20px;
-    letter-spacing: 0.3em;
-    height: 48px;
   }
   .link {
     padding: 0;
@@ -180,6 +226,10 @@ import Note from "../components/ui/Note.astro";
     font: inherit;
     color: var(--link);
     cursor: pointer;
+  }
+  .label-row .link,
+  .hint {
+    font-size: 13px;
   }
   .link:hover {
     text-decoration: underline;

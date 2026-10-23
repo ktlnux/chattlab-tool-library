@@ -148,10 +148,14 @@ last initial"; edits made in the dashboard show as "Steward".
 
 ## Member accounts
 
-Members sign in on the site with their email: they're emailed a 6-digit code, and there are no
-passwords. Their first sign-in creates their account. To set someone up yourself, add a **users**
-record with their **email** and any password (it's never used), and fill in their details if
-you know them.
+Members create their own account on the site's sign-in page with an email and password. To set
+someone up yourself, add a **users** record with their **email** and a password, fill in their
+details if you know them, and tell them the password (they can change it on their account page).
+
+**Forgotten passwords.** Members can use **Forgot password?** on the sign-in page, which emails
+them a reset link. If that doesn't reach them, open their **users** record, set a new
+**password**, save, and tell them what it is. Accounts created back when members signed in with
+emailed codes have a random password, so those members need a reset before they can sign in.
 
 Each member's **first_name**, **last_name**, **phone**, **preferred_contact** and
 **discord_username** are private: only editors and the member can see them.

@@ -44,8 +44,9 @@ DNS is at Namecheap: an A record for `tools.chattlab.space` points at the Drople
      in S3" enter a Backblaze B2 (or Cloudflare R2) bucket's endpoint, region and keys. Click
      "Initialize new backup" once and confirm it appears in the bucket.
    - In Collections → `_superusers` → options, consider turning on **MFA** for editor logins.
-8. **Email (required for member sign-in).** Members sign in with codes sent by email, so
-   PocketBase needs an outgoing mail service. See "Setting up email" below.
+8. **Email (for password resets).** Members sign in with an email and password. If they forget
+   it, "Forgot password?" emails them a reset link, which needs an outgoing mail service. See
+   "Setting up email" below. Until it's set up, editors reset passwords in the dashboard.
 
 ## Setting up email
 
@@ -53,7 +54,7 @@ DNS is at Namecheap: an A record for `tools.chattlab.space` points at the Drople
    SendGrid or Brevo, and add `chattlab.space` as a sending domain.
 2. The service lists a few DNS records (SPF, DKIM, sometimes a return-path CNAME). Add them in
    Namecheap → Advanced DNS and wait for the service to show the domain as verified. Without
-   them, codes land in spam or bounce.
+   them, emails land in spam or bounce.
 3. **DigitalOcean blocks the usual SMTP ports (25, 465, 587) on new Droplets.** Use the service's
    alternate port instead: e.g. **2587** (STARTTLS) or **2465** (TLS) on Resend, **2525** on
    Mailgun or SendGrid. Check the service's docs for current values.
@@ -62,7 +63,8 @@ DNS is at Namecheap: an A record for `tools.chattlab.space` points at the Drople
    - Turn on **Use SMTP mail server** and enter the service's host, the alternate port, and the
      SMTP username and password (or API key) it gives you.
    - Click **Send test email** and check it arrives.
-5. Sign in at `https://tools.chattlab.space/signin` with your own email to check the whole flow.
+5. On `https://tools.chattlab.space/signin`, use **Forgot password?** with your own member account
+   to check the whole flow.
 
 ## Updating
 

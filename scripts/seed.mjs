@@ -35,9 +35,8 @@ async function findOrCreate(collection, filter, record) {
   password: PB_PASSWORD,
 }));
 
-// A member account with the same email, for trying the site's sign-in. Members sign in with
-// emailed codes; locally, scripts/dev-pocketbase.sh prints the code in its terminal instead.
-// Fills in the profile if the account already exists without one.
+// A member account with the same email and password, for trying the site's sign-in.
+// Fills in the profile if the account already exists without one, and resets its password.
 const devProfile = { first_name: "Dev", last_name: "Member", preferred_contact: "email" };
 const existingMember = await api(
   "GET",
@@ -46,14 +45,16 @@ const existingMember = await api(
 if (existingMember.items.length) {
   const member = existingMember.items[0];
   const missing = Object.fromEntries(Object.entries(devProfile).filter(([field]) => !member[field]));
-  if (Object.keys(missing).length) await api("PATCH", `/api/collections/users/records/${member.id}`, missing);
+  await api("PATCH", `/api/collections/users/records/${member.id}`, {
+    ...missing,
+    password: PB_PASSWORD,
+    passwordConfirm: PB_PASSWORD,
+  });
 } else {
-  // Members never use a password, but PocketBase requires one.
-  const password = crypto.randomUUID().replaceAll("-", "");
   await api("POST", "/api/collections/users/records", {
     email: PB_EMAIL,
-    password,
-    passwordConfirm: password,
+    password: PB_PASSWORD,
+    passwordConfirm: PB_PASSWORD,
     verified: true,
     ...devProfile,
   });

@@ -23,9 +23,9 @@ if [[ ! -x "$BIN" ]] || ! "$BIN" --version | grep -q "$PB_VERSION"; then
   rm -rf "$tmp"
 fi
 
-# Print member sign-in codes in this terminal instead of emailing them
-# (pocketbase/pb_hooks/dev_signin_codes.pb.js).
-export PB_DEV_PRINT_CODES=1
+# Print member password reset links in this terminal instead of emailing them
+# (pocketbase/pb_hooks/dev_mail.pb.js).
+export PB_DEV_PRINT_EMAILS=1
 
 exec "$BIN" "${@:-serve}" \
   --dir "$ROOT/pocketbase/pb_data" \

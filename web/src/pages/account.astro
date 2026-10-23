@@ -30,6 +30,28 @@ import ContactFields from "../components/ContactFields.astro";
       initial.
     </p>
 
+    <form class="password card">
+      <h2 class="heading-16">Change password</h2>
+      <input type="email" name="username" autocomplete="username" hidden />
+      <label class="field">
+        <span class="label">Current password</span>
+        <input class="input" type="password" name="oldPassword" required autocomplete="current-password" />
+      </label>
+      <label class="field">
+        <span class="label">New password</span>
+        <input class="input" type="password" name="password" required minlength="8" autocomplete="new-password" />
+      </label>
+      <label class="field">
+        <span class="label">Confirm new password</span>
+        <input class="input" type="password" name="passwordConfirm" required minlength="8" autocomplete="new-password" />
+      </label>
+      <div class="error" hidden><Note variant="error"><span class="error-text"></span></Note></div>
+      <div class="saved" hidden><Note variant="success">Password changed.</Note></div>
+      <div class="actions">
+        <Button type="submit" variant="secondary" class="submit">Change password</Button>
+      </div>
+    </form>
+
     <Button type="button" variant="secondary" class="sign-out">Sign out</Button>
   </div>
 </Base>
@@ -86,6 +108,43 @@ import ContactFields from "../components/ContactFields.astro";
     }
   });
 
+  const passwordForm = root.querySelector<HTMLFormElement>(".password")!;
+  if (member) passwordForm.querySelector<HTMLInputElement>("[name=username]")!.value = member.email;
+
+  passwordForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const me = currentMember();
+    if (!me) return window.location.replace(signInUrl("/account"));
+    const errorBox = passwordForm.querySelector<HTMLElement>(".error")!;
+    const saved = passwordForm.querySelector<HTMLElement>(".saved")!;
+    errorBox.hidden = true;
+    saved.hidden = true;
+
+    const data = new FormData(passwordForm);
+    const oldPassword = String(data.get("oldPassword") ?? "");
+    const password = String(data.get("password") ?? "");
+    const passwordConfirm = String(data.get("passwordConfirm") ?? "");
+    if (password !== passwordConfirm) {
+      passwordForm.querySelector(".error-text")!.textContent = "The new passwords don't match.";
+      errorBox.hidden = false;
+      return;
+    }
+    const button = passwordForm.querySelector<HTMLButtonElement>(".submit")!;
+    button.disabled = true;
+    try {
+      await pb.collection("users").update(me.id, { oldPassword, password, passwordConfirm });
+      // Changing the password signs out every device, including this one, so sign back in.
+      await pb.collection("users").authWithPassword(me.email, password);
+      passwordForm.reset();
+      saved.hidden = false;
+    } catch (err) {
+      passwordForm.querySelector(".error-text")!.textContent = errorMessage(err, "Couldn't change your password. Please try again.");
+      errorBox.hidden = false;
+    } finally {
+      button.disabled = false;
+    }
+  });
+
   root.querySelector(".sign-out")!.addEventListener("click", () => {
     pb.authStore.clear();
     window.location.assign("/");
@@ -119,6 +178,17 @@ import ContactFields from "../components/ContactFields.astro";
     background: var(--surface);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-border-small);
+  }
+  .card h2 {
+    margin: 0;
+  }
+  .field {
+    display: grid;
+    gap: 6px;
+  }
+  .label {
+    font-size: 14px;
+    font-weight: 500;
   }
   .actions {
     display: flex;
