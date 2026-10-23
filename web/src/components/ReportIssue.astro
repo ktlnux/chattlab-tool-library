@@ -1,9 +1,11 @@
 ---
-// "Report an issue" button and dialog for working machines. Reports go to the
-// issue_reports collection in PocketBase; a report saying the machine is completely
-// disabled marks it out of service (see pocketbase/pb_hooks/issue_reports.pb.js).
+// "Report an issue" button and dialog for working machines. Reports become tool issues via
+// POST /api/tool-issues/report; one that takes the machine out of operation marks it out of
+// service (see pocketbase/pb_hooks/tool_issues.pb.js). Visitors give their name and contact
+// details; signed-in members only fill in what their profile is missing.
 import Button from "./ui/Button.astro";
 import Note from "./ui/Note.astro";
+import ContactFields from "./ContactFields.astro";
 
 interface Props {
   machineId: string;
@@ -69,6 +71,23 @@ const { machineId, machineName, machineCode } = Astro.props;
           </label>
         </fieldset>
 
+        <div class="reporter-member" hidden>
+          <Note>
+            Reporting as <strong class="member-name"></strong>. A steward will contact you by
+            <span class="member-method"></span>. <a href="/account">Edit your details</a>
+          </Note>
+        </div>
+        <div class="reporter-form">
+          <div class="reporter-intro">
+            <h3 class="label">Your contact details</h3>
+            <p class="label-12 muted">
+              So a steward can follow up. Only stewards can see these.{" "}
+              <span class="signin-hint"><a class="signin-link" href="/signin">Sign in</a> to skip this next time.</span>
+            </p>
+          </div>
+          <ContactFields />
+        </div>
+
         <!-- Spam trap: hidden from people, filled in by bots. -->
         <label class="trap" aria-hidden="true">
           Website <input name="website" tabindex="-1" autocomplete="off" />
@@ -87,7 +106,7 @@ const { machineId, machineName, machineCode } = Astro.props;
 
     <div class="report-done" hidden>
       <Note variant="success" label="Thanks!">
-        <span class="done-text"></span>
+        <span class="done-text"></span> <a class="issue-link" href="/">View the issue</a>
       </Note>
       <footer>
         <Button type="button" class="done">Done</Button>
@@ -97,6 +116,9 @@ const { machineId, machineName, machineCode } = Astro.props;
 </div>
 
 <script>
+  import { pb, currentMember, refreshMember, missingContactInfo, errorMessage, signInUrl } from "../lib/client";
+  import { fillContactFields, readContactFields } from "./contact-fields";
+
   for (const root of document.querySelectorAll<HTMLElement>(".report-issue")) {
     const machineId = root.dataset.machineId!;
     const dialog = root.querySelector("dialog")!;
@@ -106,6 +128,8 @@ const { machineId, machineName, machineCode } = Astro.props;
     const errorBox = root.querySelector<HTMLElement>(".form-error")!;
     const errorText = root.querySelector<HTMLElement>(".form-error-text")!;
     const submit = root.querySelector<HTMLButtonElement>(".submit")!;
+    const memberBox = root.querySelector<HTMLElement>(".reporter-member")!;
+    const contactBox = root.querySelector<HTMLElement>(".reporter-form")!;
     let markedOutOfService = false;
 
     function showError(message: string) {
@@ -113,13 +137,42 @@ const { machineId, machineName, machineCode } = Astro.props;
       errorBox.hidden = false;
     }
 
-    function open() {
+    // Visitors give full contact details; signed-in members with a complete profile skip them,
+    // and members missing something only see the contact fields, prefilled, without email.
+    function setUpReporter() {
+      const member = currentMember();
+      const complete = member && missingContactInfo(member).length === 0;
+      memberBox.hidden = !complete;
+      contactBox.hidden = !!complete;
+      contactBox.querySelector<HTMLElement>(".signin-hint")!.hidden = !!member;
+      contactBox.querySelector<HTMLAnchorElement>(".signin-link")!.href = signInUrl();
+      const emailField = contactBox.querySelector<HTMLElement>("[name=email]")!.closest<HTMLElement>(".field")!;
+      emailField.hidden = !!member;
+      if (member) {
+        root.querySelector(".member-name")!.textContent = `${member.first_name} ${member.last_name}`;
+        root.querySelector(".member-method")!.textContent =
+          member.preferred_contact === "discord"
+            ? `Discord (${member.discord_username})`
+            : member.preferred_contact === "phone"
+              ? `phone (${member.phone})`
+              : `email (${member.email})`;
+        fillContactFields(form, member);
+      }
+    }
+
+    async function open() {
       form.reset();
       form.hidden = false;
       done.hidden = true;
       errorBox.hidden = true;
+      setUpReporter();
       dialog.showModal();
       form.querySelector<HTMLInputElement>("[name=summary]")!.focus();
+      // Pick up profile changes made in another tab.
+      if (currentMember()) {
+        await refreshMember();
+        setUpReporter();
+      }
     }
 
     function close() {
@@ -150,36 +203,49 @@ const { machineId, machineName, machineCode } = Astro.props;
       if (!summary) return showError("Please say briefly what's wrong.");
       if (!usable) return showError("Please choose whether the machine can still be used.");
 
+      const member = currentMember();
+      const contact = readContactFields(form);
+      const needsContact = !member || missingContactInfo(member).length > 0;
+      if (needsContact) {
+        const missing = missingContactInfo({ ...contact, email: member ? member.email : contact.email ?? "" });
+        if (missing.length > 0) return showError(`Please add your ${missing.join(", ")}.`);
+      }
+
       const disabled = usable === "disabled";
       submit.disabled = true;
       submit.textContent = "Sending…";
       try {
-        const res = await fetch("/api/collections/issue_reports/records", {
+        // Save what a signed-in member just filled in, so they aren't asked again.
+        if (member && needsContact) {
+          const { email: _email, ...profile } = contact;
+          await pb.collection("users").update(member.id, profile);
+        }
+        const issue = await pb.send<{ id: string }>("/api/tool-issues/report", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+          body: {
             machine: machineId,
-            summary,
+            title: summary,
             details: String(data.get("details") ?? "").trim(),
-            machine_disabled: disabled,
+            severity: disabled ? "out_of_operation" : "operational",
             website: data.get("website"),
-          }),
+            reporter_first_name: contact.first_name,
+            reporter_last_name: contact.last_name,
+            reporter_email: contact.email ?? "",
+            reporter_phone: contact.phone,
+            reporter_preferred_contact: contact.preferred_contact,
+            reporter_discord: contact.discord_username,
+          },
         });
-        if (res.status === 429) {
-          return showError("Too many reports have been sent from this network. Please try again in a few minutes.");
-        }
-        if (!res.ok) {
-          return showError("Your report couldn't be sent. Please try again, or tell a steward directly.");
-        }
         markedOutOfService = disabled;
         doneText.textContent = disabled
-          ? "Your report has been recorded for the stewards, and this machine is now marked out of service."
-          : "Your report has been recorded for the stewards.";
+          ? `Your report has been recorded for the stewards, and this machine is now marked out of service.`
+          : `Your report has been recorded for the stewards.`;
+        root.querySelector<HTMLAnchorElement>(".issue-link")!.href = `/issues/${issue.id}`;
         form.hidden = true;
         done.hidden = false;
         root.querySelector<HTMLButtonElement>(".done")!.focus();
-      } catch {
-        showError("Your report couldn't be sent. Check your connection and try again.");
+      } catch (err) {
+        showError(errorMessage(err, "Your report couldn't be sent. Please try again, or tell a steward directly."));
       } finally {
         submit.disabled = false;
         submit.textContent = "Send report";
@@ -302,6 +368,19 @@ const { machineId, machineName, machineCode } = Astro.props;
     font-size: 14px;
     line-height: 20px;
     font-weight: 500;
+  }
+  .reporter-form {
+    display: grid;
+    gap: 14px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+  }
+  .reporter-form[hidden],
+  .reporter-member[hidden] {
+    display: none;
+  }
+  .reporter-intro p {
+    margin: 2px 0 0;
   }
   .trap {
     position: absolute;

@@ -14,6 +14,8 @@ consumables, manuals, and who to contact.
 |---|---|
 | `/` | Browse and search all machines |
 | `/m/<CODE>` | A machine's page (what the QR sticker opens) |
+| `/issues/<id>` | A tool issue and its updates |
+| `/signin`, `/account` | Member sign-in (emailed code) and profile |
 | `/labels` | Printable QR sticker sheet |
 | `/_/` | Editor dashboard (PocketBase) |
 

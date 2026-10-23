@@ -1,0 +1,95 @@
+---
+// Header link: "Sign in" for visitors, the member's initials (linking to their account) once signed in.
+// Rendered as "Sign in" on the server and swapped in the browser, since sign-in lives in the browser.
+---
+
+<a href="/signin" class="account-link" aria-label="Sign in">
+  <svg class="person" width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+    <circle cx="8" cy="5.5" r="2.75"></circle>
+    <path d="M2.75 14c.6-2.6 2.7-4.25 5.25-4.25S12.65 11.4 13.25 14"></path>
+  </svg>
+  <span class="label">Sign in</span>
+  <span class="initials" hidden></span>
+</a>
+
+<script>
+  import { currentMember } from "../lib/client";
+
+  const member = currentMember();
+  if (member) {
+    const initials = `${member.first_name?.[0] ?? ""}${member.last_name?.[0] ?? ""}`.toUpperCase() || member.email[0].toUpperCase();
+    for (const link of document.querySelectorAll<HTMLAnchorElement>(".account-link")) {
+      link.href = "/account";
+      link.setAttribute("aria-label", "Your account");
+      link.classList.add("signed-in");
+      link.querySelector<HTMLElement>(".initials")!.textContent = initials;
+      link.querySelector<HTMLElement>(".initials")!.hidden = false;
+    }
+  }
+</script>
+
+<style>
+  .account-link {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 10px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    box-shadow: var(--shadow-border);
+    background: var(--surface);
+  }
+  .account-link:hover {
+    text-decoration: none;
+    background: var(--surface-hover);
+  }
+  .person {
+    display: none;
+  }
+  .signed-in {
+    padding: 0;
+    box-shadow: none;
+    background: none;
+  }
+  .signed-in .label,
+  .signed-in .person {
+    display: none;
+  }
+  .initials {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    background: var(--gray-1000);
+    color: var(--background-100);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .initials[hidden] {
+    display: none;
+  }
+
+  /* Phones: an icon button next to the search icon. */
+  @media (max-width: 719px) {
+    .account-link:not(.signed-in) {
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      justify-content: center;
+      box-shadow: none;
+      background: none;
+      margin-right: -8px;
+    }
+    .account-link:not(.signed-in) .label {
+      display: none;
+    }
+    .account-link:not(.signed-in) .person {
+      display: block;
+    }
+  }
+</style>

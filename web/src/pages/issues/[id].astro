@@ -1,0 +1,244 @@
+---
+import Base from "../../layouts/Base.astro";
+import Badge from "../../components/ui/Badge.astro";
+import Button from "../../components/ui/Button.astro";
+import Note from "../../components/ui/Note.astro";
+import IssueStatusBadge from "../../components/IssueStatusBadge.astro";
+import LocalTime from "../../components/LocalTime.astro";
+import { getIssue, isoDate, ISSUE_STATUS_LABELS, SEVERITY_LABELS } from "../../lib/pb";
+
+const result = await getIssue(Astro.params.id ?? "");
+if (!result) {
+  return Astro.rewrite("/404");
+}
+const { issue, updates } = result;
+const machine = issue.expand?.machine;
+const closed = issue.status === "completed";
+---
+
+<Base title={issue.title} description={`Tool issue${machine ? ` on the ${machine.name}` : ""}: ${issue.title}`}>
+  <nav class="breadcrumb copy-14" aria-label="Breadcrumb">
+    <a href="/">Machines</a>
+    {
+      machine && (
+        <>
+          <span aria-hidden="true">/</span>
+          <a href={`/m/${machine.code}#history`}>{machine.name}</a>
+        </>
+      )
+    }
+    <span aria-hidden="true">/</span>
+    <span>Issue</span>
+  </nav>
+
+  <header class="issue-header">
+    <div class="badges">
+      <IssueStatusBadge status={issue.status} />
+      <Badge variant={issue.severity === "out_of_operation" ? "red" : "gray"}>{SEVERITY_LABELS[issue.severity]}</Badge>
+    </div>
+    <h1>{issue.title}</h1>
+    <p class="copy-14 muted">
+      Reported by {issue.reporter_display || "a member"} on <LocalTime iso={isoDate(issue.created)} />
+      {machine && <> · <a href={`/m/${machine.code}`}>{machine.name}</a> <span class="mono">{machine.code}</span></>}
+    </p>
+  </header>
+
+  <ol class="thread">
+    <li class="entry">
+      <div class="entry-head copy-14">
+        <strong>{issue.reporter_display || "A member"}</strong>
+        <span class="subtle">reported this issue</span>
+        <LocalTime iso={isoDate(issue.created)} />
+      </div>
+      {issue.details ? <p class="body">{issue.details}</p> : <p class="body subtle">No details given.</p>}
+    </li>
+    {
+      updates.map((update) => (
+        <li class="entry">
+          <div class="entry-head copy-14">
+            <strong>{update.author_display || "A member"}</strong>
+            {update.new_status ? (
+              <span class="subtle">
+                {update.new_status === "completed" ? "closed the issue" : "changed the status to"}
+              </span>
+            ) : (
+              <span class="subtle">commented</span>
+            )}
+            {update.new_status && update.new_status !== "completed" && <IssueStatusBadge status={update.new_status} size="small" />}
+            <LocalTime iso={isoDate(update.created)} />
+          </div>
+          {update.comment && <p class="body">{update.comment}</p>}
+        </li>
+      ))
+    }
+  </ol>
+
+  <section class="add-update" aria-labelledby="add-update-title" data-issue-id={issue.id} data-status={issue.status}>
+    <h2 id="add-update-title" class="heading-16">Add an update</h2>
+
+    <div class="signed-out">
+      <Note>
+        <a class="sign-in-link" href="/signin">Sign in</a> to comment on this issue or change its status.
+      </Note>
+    </div>
+
+    <form class="update-form" hidden>
+      <label class="field">
+        <span class="label">Comment</span>
+        <textarea class="input" name="comment" rows="4" maxlength="4000" placeholder="What did you find or do?"></textarea>
+      </label>
+      <label class="field">
+        <span class="label">Status</span>
+        <select class="input" name="new_status">
+          {
+            closed ? (
+              <>
+                <option value="">Keep closed</option>
+                <option value="needs_repair">Reopen: needs repair</option>
+                <option value="repair_in_progress">Reopen: repair in progress</option>
+              </>
+            ) : (
+              <>
+                <option value="">No change ({ISSUE_STATUS_LABELS[issue.status]})</option>
+                {issue.status !== "needs_repair" && <option value="needs_repair">Needs repair</option>}
+                {issue.status !== "repair_in_progress" && <option value="repair_in_progress">Repair in progress</option>}
+                <option value="completed">Completed: close the issue</option>
+              </>
+            )
+          }
+        </select>
+      </label>
+      <div class="error" hidden><Note variant="error"><span class="error-text"></span></Note></div>
+      <div class="actions">
+        <Button type="submit" class="submit">Post update</Button>
+      </div>
+    </form>
+  </section>
+</Base>
+
+<script>
+  import { pb, currentMember, errorMessage, signInUrl } from "../../lib/client";
+
+  const section = document.querySelector<HTMLElement>(".add-update")!;
+  const form = section.querySelector<HTMLFormElement>(".update-form")!;
+  section.querySelector<HTMLAnchorElement>(".sign-in-link")!.href = signInUrl();
+
+  if (currentMember()) {
+    section.querySelector<HTMLElement>(".signed-out")!.hidden = true;
+    form.hidden = false;
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const errorBox = form.querySelector<HTMLElement>(".error")!;
+    errorBox.hidden = true;
+    const data = new FormData(form);
+    const comment = String(data.get("comment") ?? "").trim();
+    const newStatus = String(data.get("new_status") ?? "");
+    if (!comment && !newStatus) {
+      form.querySelector(".error-text")!.textContent = "Add a comment or change the status.";
+      errorBox.hidden = false;
+      return;
+    }
+    const button = form.querySelector<HTMLButtonElement>(".submit")!;
+    button.disabled = true;
+    try {
+      await pb.collection("issue_updates").create({ issue: section.dataset.issueId, comment, new_status: newStatus });
+      window.location.reload();
+    } catch (err) {
+      form.querySelector(".error-text")!.textContent = errorMessage(err, "Couldn't post your update. Please try again.");
+      errorBox.hidden = false;
+      button.disabled = false;
+    }
+  });
+</script>
+
+<style>
+  .breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: var(--text-subtle);
+    margin-bottom: 20px;
+  }
+  .breadcrumb a {
+    color: var(--text-muted);
+  }
+  .issue-header {
+    max-width: 720px;
+  }
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .issue-header p {
+    margin: 8px 0 0;
+  }
+  .thread {
+    list-style: none;
+    margin: 28px 0 0;
+    padding: 0;
+    max-width: 720px;
+    display: grid;
+    gap: 12px;
+  }
+  .entry {
+    padding: 14px 16px;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-border-small);
+  }
+  .entry-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+  }
+  .entry-head :global(time) {
+    margin-left: auto;
+    color: var(--text-subtle);
+    font-size: 12px;
+  }
+  .body {
+    margin: 8px 0 0;
+    white-space: pre-line;
+    font-size: 15px;
+  }
+  .add-update {
+    max-width: 720px;
+    margin-top: 32px;
+    display: grid;
+    gap: 12px;
+  }
+  .update-form {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-border-small);
+  }
+  .update-form[hidden] {
+    display: none;
+  }
+  .field {
+    display: grid;
+    gap: 6px;
+  }
+  .label {
+    font-size: 14px;
+    font-weight: 500;
+  }
+  textarea.input {
+    height: auto;
+    padding: 10px 12px;
+    line-height: 20px;
+    resize: vertical;
+  }
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+</style>

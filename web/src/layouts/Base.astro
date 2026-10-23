@@ -1,6 +1,7 @@
 ---
 import { Font } from "astro:assets";
 import HeaderSearch from "../components/HeaderSearch.astro";
+import AccountLink from "../components/AccountLink.astro";
 import "../styles/global.css";
 
 interface Props {
@@ -37,6 +38,7 @@ const { title, description = "Documentation for the tools and machines at Chattl
           <span class="muted">Tool Library</span>
         </a>
         <HeaderSearch />
+        <AccountLink />
       </div>
     </header>
     <main>
@@ -74,7 +76,12 @@ const { title, description = "Documentation for the tools and machines at Chattl
     height: 56px;
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
+  }
+  @media (max-width: 719px) {
+    .site-header .inner {
+      gap: 4px;
+    }
   }
   .brand {
     display: flex;

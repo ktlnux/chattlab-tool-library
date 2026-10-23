@@ -20,7 +20,11 @@ in with the account an admin created for you.
 | **consumables** | Blades, bits, filament, cartridges. One record can be linked to several machines |
 | **contacts** | Stewards or roles members can reach out to |
 | **documentation_links** | Links to outside manuals, videos and support pages, each linked to one machine |
-| **issue_reports** | Problems members reported from a machine page (see "Issue reports" below) |
+| **tool_issues** | Problems reported from a machine page, with reporter contact details (see "Tool issues") |
+| **issue_updates** | Comments and status changes on tool issues |
+| **maintenance_logs** | Maintenance done on a machine (see "Maintenance log") |
+| **machine_changes** | Automatic log of edits to machines; don't edit by hand |
+| **users** | Member accounts (see "Member accounts") |
 
 ## Adding a machine
 
@@ -40,7 +44,9 @@ in with the account an admin created for you.
    - **repair_in_progress**: someone is fixing it; members should not use it yet.
    - **out_of_service**: broken or tagged out, with no repair under way yet.
 
-   Update it whenever a machine is tagged out or comes back into service.
+   Tool issues that take the machine out of operation update this automatically (see "Tool
+   issues"). Set it by hand for anything else, e.g. a machine tagged out for a reason nobody
+   reported on the site.
 7. **training_required**: tick if members need sign-off first.
 8. **safety** and **quick_start**: use the editor's bullet and numbered lists. Keep it short;
    people read it standing at the machine.
@@ -53,8 +59,8 @@ in with the account an admin created for you.
 
 ## Adding troubleshooting entries
 
-The "Having a problem?" section is the first thing members see after scanning a sticker, so this
-is the most valuable content.
+The "Troubleshooting" section is where members go when something's wrong, so this is some of the
+most valuable content.
 
 **troubleshooting** → **New record**:
 - **machine**: pick the machine.
@@ -89,23 +95,69 @@ Prefer uploading a PDF when the manufacturer allows it: outside links can move o
 3. Each label is 3.5" × 2". Print on sticker paper or plain paper and laminate it. Scan a sticker
    with your phone to check it before putting it on the machine.
 
-## Issue reports
+## Tool issues
 
-When a machine's status is **working**, its page shows a **Report an issue** button. Members
-don't need to log in. Each report lands in the **issue_reports** collection with:
+When a machine's status is **working**, its page shows a **Report an issue** button. Anyone can
+use it. Visitors give their name, email, optional phone and preferred contact method (email,
+phone or Discord); signed-in members only fill in what's missing from their account.
 
-- **machine**: which machine it's about.
-- **summary** and **details**: what the member wrote.
-- **machine_disabled**: ticked if they said the machine can't be used at all. Those reports
-  automatically switch the machine's status to **out_of_service**.
+Each report becomes a **tool_issues** record:
 
-Check the collection regularly; nobody is notified when a report comes in. When you act on one:
+- **title**: the reporter's one-line description. Rename it if that makes it clearer.
+- **details**: what they wrote.
+- **severity**: **out_of_operation** if they said the machine can't be used at all, otherwise
+  **operational**.
+- **status**: **needs_repair** → **repair_in_progress** → **completed**. "Completed" means closed;
+  **closed_at** is filled in automatically.
+- **reporter_*** fields: the reporter's name and contact details. **Only editors can see these.**
+  The site only ever shows "first name + last initial", e.g. "Kim R.". **reporter** links to their
+  member account if they were signed in.
 
-1. Set the machine's **status** to **repair_in_progress** while it's being fixed (the page then
-   shows "This machine is currently under repair"), and back to **working** when it's done.
-2. Delete the report once it's dealt with, or keep it as a record of the repair.
+Nobody is notified when an issue comes in, so check **tool_issues** regularly (filter by
+`status != "completed"` to see open ones).
+
+**Working an issue.** Signed-in members (and you) can post updates from the issue's page on the
+site: a comment, a status change, or both. Closed issues can be reopened the same way. Each issue
+has its own page, linked from the machine's "Open issues" list and its History. You can also change
+**status** directly in the dashboard; that adds a "Steward" update to the issue's history.
+
+**Machine status follows issues that take it out of operation:**
+
+| Open out-of-operation issues | Machine status |
+|---|---|
+| any **needs_repair** | out_of_service |
+| only **repair_in_progress** | repair_in_progress |
+| none | working |
+
+This only kicks in when such an issue changes, so a status you set by hand for another reason
+stays until then. Issues marked **operational** never change the machine's status.
+
+## Maintenance log
+
+Signed-in members can tap **Log maintenance** in a machine's History section to record work done:
+what was done, optional notes, and the date (leave it as today unless the work was done earlier).
+You can also add entries in **maintenance_logs**. Entries show in the machine's History with
+who logged them.
+
+## History
+
+Each machine page ends with a **History** timeline, most recent first: when the machine was
+added, edits made in the dashboard (from **machine_changes**, written automatically, listing which
+fields changed), maintenance, issues reported, and issue updates. People are shown as "first name +
+last initial"; edits made in the dashboard show as "Steward".
+
+## Member accounts
+
+Members sign in on the site with their email: they're emailed a 6-digit code, and there are no
+passwords. Their first sign-in creates their account. To set someone up yourself, add a **users**
+record with their **email** and any password (it's never used), and fill in their details if
+you know them.
+
+Each member's **first_name**, **last_name**, **phone**, **preferred_contact** and
+**discord_username** are private: only editors and the member can see them.
 
 ## Removing a machine
 
-Delete its **machines** record. Its troubleshooting entries are deleted with it. Remove the sticker
+Delete its **machines** record. Its troubleshooting entries, documentation links, tool issues,
+maintenance log and history are deleted with it. Remove the sticker
 too, or scanning it will show "Machine not found".

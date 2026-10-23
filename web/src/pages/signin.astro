@@ -1,0 +1,187 @@
+---
+import Base from "../layouts/Base.astro";
+import Button from "../components/ui/Button.astro";
+import Note from "../components/ui/Note.astro";
+---
+
+<Base title="Sign in">
+  <div class="auth-card">
+    <form id="email-step" class="step">
+      <h1 class="heading-24">Sign in</h1>
+      <p class="copy-14 muted">
+        We'll email you a 6-digit code; no password needed. If you don't have an account yet, this creates one.
+      </p>
+      <label class="field">
+        <span class="label">Email</span>
+        <input class="input" type="email" name="email" required autocomplete="email" inputmode="email" />
+      </label>
+      <div class="error" hidden><Note variant="error"><span class="error-text"></span></Note></div>
+      <Button type="submit" class="submit">Email me a code</Button>
+    </form>
+
+    <form id="code-step" class="step" hidden>
+      <h1 class="heading-24">Check your email</h1>
+      <p class="copy-14 muted">Enter the code we sent to <strong class="sent-to"></strong>. It expires in 10 minutes.</p>
+      <label class="field">
+        <span class="label">Code</span>
+        <input
+          class="input code"
+          name="code"
+          required
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          pattern="[0-9]*"
+          maxlength="6"
+        />
+      </label>
+      <div class="error" hidden><Note variant="error"><span class="error-text"></span></Note></div>
+      <Button type="submit" class="submit">Sign in</Button>
+      <p class="copy-14 muted">
+        Didn't get it? Check spam, or <button type="button" class="link restart">use a different email</button>.
+      </p>
+    </form>
+  </div>
+</Base>
+
+<script>
+  import { ClientResponseError } from "pocketbase";
+  import { pb, currentMember, missingContactInfo, errorMessage, type Member } from "../lib/client";
+
+  const emailForm = document.getElementById("email-step") as HTMLFormElement;
+  const codeForm = document.getElementById("code-step") as HTMLFormElement;
+  const params = new URLSearchParams(window.location.search);
+  // Only return to pages on this site.
+  const requested = params.get("next") ?? "/";
+  const next = requested.startsWith("/") && !requested.startsWith("//") ? requested : "/";
+  let otpId = "";
+
+  function showError(form: HTMLFormElement, message: string) {
+    form.querySelector<HTMLElement>(".error-text")!.textContent = message;
+    form.querySelector<HTMLElement>(".error")!.hidden = false;
+  }
+
+  async function busy<T>(form: HTMLFormElement, label: string, work: () => Promise<T>) {
+    const button = form.querySelector<HTMLButtonElement>(".submit")!;
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = label;
+    form.querySelector<HTMLElement>(".error")!.hidden = true;
+    try {
+      return await work();
+    } finally {
+      button.disabled = false;
+      button.textContent = original;
+    }
+  }
+
+  function finish(member: Member) {
+    // New members (and anyone missing contact details) fill in their profile first.
+    if (missingContactInfo(member).length > 0) {
+      window.location.href = `/account?next=${encodeURIComponent(next)}`;
+    } else {
+      window.location.href = next;
+    }
+  }
+
+  if (currentMember()) finish(currentMember()!);
+
+  emailForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const email = String(new FormData(emailForm).get("email") ?? "").trim();
+    if (!email) return showError(emailForm, "Enter your email address.");
+    try {
+      await busy(emailForm, "Sending…", async () => {
+        // Codes are only sent to existing accounts, so create one on first sign-in.
+        // The password is never used: members always sign in with emailed codes.
+        // (PocketBase passwords are at most 71 characters.)
+        const password = (crypto.randomUUID() + crypto.randomUUID()).replaceAll("-", "").slice(0, 60);
+        try {
+          await pb.collection("users").create({ email, password, passwordConfirm: password });
+        } catch (err) {
+          const alreadyExists = err instanceof ClientResponseError && err.response?.data?.email?.code === "validation_not_unique";
+          if (!alreadyExists) throw err;
+        }
+        ({ otpId } = await pb.collection("users").requestOTP(email));
+      });
+      codeForm.querySelector(".sent-to")!.textContent = email;
+      emailForm.hidden = true;
+      codeForm.hidden = false;
+      codeForm.querySelector<HTMLInputElement>("[name=code]")!.focus();
+    } catch (err) {
+      showError(emailForm, errorMessage(err, "Couldn't send a code. Please try again."));
+    }
+  });
+
+  codeForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const code = String(new FormData(codeForm).get("code") ?? "").replace(/\D/g, "");
+    if (code.length !== 6) return showError(codeForm, "Enter the 6-digit code from the email.");
+    try {
+      const auth = await busy(codeForm, "Signing in…", () => pb.collection("users").authWithOTP(otpId, code));
+      finish(auth.record as Member);
+    } catch (err) {
+      showError(
+        codeForm,
+        err instanceof ClientResponseError && err.status === 400
+          ? "That code didn't work. Check it, or request a new one."
+          : errorMessage(err, "Couldn't sign you in. Please try again.")
+      );
+    }
+  });
+
+  codeForm.querySelector(".restart")!.addEventListener("click", () => {
+    codeForm.reset();
+    codeForm.hidden = true;
+    emailForm.hidden = false;
+    emailForm.querySelector<HTMLInputElement>("[name=email]")!.focus();
+  });
+</script>
+
+<style>
+  .auth-card {
+    max-width: 400px;
+    margin: 24px auto;
+    padding: 24px;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-border-small);
+  }
+  .step {
+    display: grid;
+    gap: 16px;
+  }
+  .step[hidden] {
+    display: none;
+  }
+  .step p {
+    margin: -8px 0 0;
+  }
+  .step p:last-child {
+    margin: 0;
+  }
+  .field {
+    display: grid;
+    gap: 6px;
+  }
+  .label {
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .code {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    letter-spacing: 0.3em;
+    height: 48px;
+  }
+  .link {
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    color: var(--link);
+    cursor: pointer;
+  }
+  .link:hover {
+    text-decoration: underline;
+  }
+</style>

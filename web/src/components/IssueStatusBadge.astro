@@ -1,0 +1,25 @@
+---
+import Badge from "./ui/Badge.astro";
+import { ISSUE_STATUS_LABELS, type IssueStatus } from "../lib/pb";
+
+interface Props {
+  status: IssueStatus;
+  size?: "small" | "medium";
+}
+const { status, size } = Astro.props;
+const variants = { needs_repair: "red", repair_in_progress: "amber", completed: "green" } as const;
+---
+
+<Badge variant={variants[status] ?? "gray"} size={size}>
+  <span class="dot" aria-hidden="true"></span>
+  {ISSUE_STATUS_LABELS[status] ?? status}
+</Badge>
+
+<style>
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+</style>

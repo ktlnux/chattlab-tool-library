@@ -1,0 +1,168 @@
+---
+// Vertical timeline of a machine's history, most recent first. Shows the latest few events
+// and a button for the rest (all are shown without JavaScript).
+import IssueStatusBadge from "./IssueStatusBadge.astro";
+import LocalTime from "./LocalTime.astro";
+import type { HistoryEvent } from "../lib/pb";
+
+interface Props {
+  events: HistoryEvent[];
+  initial?: number;
+}
+const { events, initial = 8 } = Astro.props;
+const kindLabels: Record<HistoryEvent["kind"], string> = {
+  created: "Added",
+  updated: "Updated",
+  maintenance: "Maintenance",
+  issue_reported: "Issue reported",
+  issue_update: "Issue update",
+};
+---
+
+<div class="history" data-initial={initial}>
+  <ol class="timeline">
+    {
+      events.map((event, i) => (
+        <li class:list={["event", event.kind, { "beyond-initial": i >= initial, "last-initial": i === initial - 1 }]}>
+          <span class="marker" aria-hidden="true" />
+          <div class="content">
+            <div class="head">
+              <span class="kind label-12">{kindLabels[event.kind]}</span>
+              <LocalTime iso={event.date} format={event.dayOnly ? "day" : "datetime"} />
+            </div>
+            <p class="title">{event.href ? <a href={event.href}>{event.title}</a> : event.title}</p>
+            {event.status && event.status !== "completed" && <IssueStatusBadge status={event.status} size="small" />}
+            {event.body && <p class="body copy-14">{event.body}</p>}
+            {event.actor && <p class="actor label-12 subtle">by {event.actor}</p>}
+          </div>
+        </li>
+      ))
+    }
+  </ol>
+  {
+    events.length > initial && (
+      <button type="button" class="show-all" hidden>
+        Show all {events.length} events
+      </button>
+    )
+  }
+</div>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>(".history")) {
+    const button = root.querySelector<HTMLButtonElement>(".show-all");
+    if (!button) continue;
+    root.classList.add("collapsed");
+    button.hidden = false;
+    button.addEventListener("click", () => {
+      root.classList.remove("collapsed");
+      button.remove();
+    });
+  }
+</script>
+
+<style>
+  .timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .event {
+    position: relative;
+    display: grid;
+    grid-template-columns: 24px 1fr;
+    gap: 12px;
+    padding-bottom: 20px;
+  }
+  /* The vertical line joining the markers. */
+  .event::before {
+    content: "";
+    position: absolute;
+    left: 11px;
+    top: 18px;
+    bottom: -2px;
+    width: 2px;
+    background: var(--gray-alpha-400);
+  }
+  .event:last-child::before,
+  .collapsed .last-initial::before {
+    display: none;
+  }
+  .collapsed .beyond-initial {
+    display: none;
+  }
+  .marker {
+    position: relative;
+    z-index: 1;
+    width: 12px;
+    height: 12px;
+    margin: 4px 6px 0;
+    border-radius: 999px;
+    background: var(--gray-600);
+    box-shadow: 0 0 0 4px var(--page);
+  }
+  .created .marker {
+    background: var(--gray-1000);
+  }
+  .maintenance .marker {
+    background: var(--blue-700);
+  }
+  .issue_reported .marker {
+    background: var(--red-700);
+  }
+  .issue_update .marker {
+    background: var(--amber-700);
+  }
+  .content {
+    display: grid;
+    justify-items: start;
+    gap: 4px;
+    min-width: 0;
+  }
+  .head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    color: var(--text-subtle);
+    font-size: 12px;
+  }
+  .kind {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+  }
+  .title {
+    margin: 0;
+    font-weight: 500;
+  }
+  .title a {
+    color: var(--text);
+  }
+  .title a:hover {
+    color: var(--link);
+  }
+  .body {
+    margin: 0;
+    color: var(--text-muted);
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+  }
+  .actor {
+    margin: 0;
+  }
+  .show-all {
+    margin-left: 36px;
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--link);
+    cursor: pointer;
+  }
+  .show-all:hover {
+    text-decoration: underline;
+  }
+</style>

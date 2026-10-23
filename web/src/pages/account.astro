@@ -1,0 +1,130 @@
+---
+import Base from "../layouts/Base.astro";
+import Button from "../components/ui/Button.astro";
+import Note from "../components/ui/Note.astro";
+import ContactFields from "../components/ContactFields.astro";
+---
+
+<Base title="Your account">
+  <div class="account" hidden>
+    <header>
+      <h1 class="heading-24">Your account</h1>
+      <p class="copy-14 muted">Signed in as <strong class="email"></strong></p>
+    </header>
+
+    <div class="welcome" hidden>
+      <Note>Add your name and how you'd like to be contacted. Stewards use this to follow up on issues you report.</Note>
+    </div>
+
+    <form class="profile card">
+      <ContactFields showEmail={false} />
+      <div class="error" hidden><Note variant="error"><span class="error-text"></span></Note></div>
+      <div class="saved" hidden><Note variant="success">Saved.</Note></div>
+      <div class="actions">
+        <Button type="submit" class="submit">Save</Button>
+      </div>
+    </form>
+
+    <p class="copy-14 muted privacy">
+      Only stewards can see your contact details. Elsewhere on the site you're shown as your first name and last
+      initial.
+    </p>
+
+    <Button type="button" variant="secondary" class="sign-out">Sign out</Button>
+  </div>
+</Base>
+
+<script>
+  import { pb, currentMember, refreshMember, missingContactInfo, errorMessage, signInUrl } from "../lib/client";
+  import { fillContactFields, readContactFields } from "../components/contact-fields";
+
+  const root = document.querySelector<HTMLElement>(".account")!;
+  const form = root.querySelector<HTMLFormElement>(".profile")!;
+  const params = new URLSearchParams(window.location.search);
+  const requested = params.get("next");
+  const next = requested && requested.startsWith("/") && !requested.startsWith("//") ? requested : null;
+
+  const member = (await refreshMember()) ?? null;
+  if (!member) {
+    window.location.replace(signInUrl("/account"));
+  } else {
+    root.querySelector(".email")!.textContent = member.email;
+    root.querySelector<HTMLElement>(".welcome")!.hidden = missingContactInfo(member).length === 0;
+    fillContactFields(form, member);
+    root.hidden = false;
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const me = currentMember();
+    if (!me) return window.location.replace(signInUrl("/account"));
+    const errorBox = form.querySelector<HTMLElement>(".error")!;
+    const saved = form.querySelector<HTMLElement>(".saved")!;
+    errorBox.hidden = true;
+    saved.hidden = true;
+
+    const values = readContactFields(form);
+    const missing = missingContactInfo({ ...values, email: me.email });
+    if (missing.length > 0) {
+      form.querySelector(".error-text")!.textContent = `Please add your ${missing.join(", ")}.`;
+      errorBox.hidden = false;
+      return;
+    }
+    const button = form.querySelector<HTMLButtonElement>(".submit")!;
+    button.disabled = true;
+    try {
+      // Updating the record also refreshes the saved sign-in with the new details.
+      await pb.collection("users").update(me.id, values);
+      if (next) return window.location.assign(next);
+      saved.hidden = false;
+      root.querySelector<HTMLElement>(".welcome")!.hidden = true;
+    } catch (err) {
+      form.querySelector(".error-text")!.textContent = errorMessage(err, "Couldn't save. Please try again.");
+      errorBox.hidden = false;
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  root.querySelector(".sign-out")!.addEventListener("click", () => {
+    pb.authStore.clear();
+    window.location.assign("/");
+  });
+</script>
+
+<style>
+  .account {
+    max-width: 520px;
+    margin: 0 auto;
+    display: grid;
+    gap: 20px;
+    justify-items: start;
+  }
+  .account[hidden] {
+    display: none;
+  }
+  .account > * {
+    width: 100%;
+  }
+  .account > :global(.button) {
+    width: auto;
+  }
+  header p {
+    margin: 4px 0 0;
+  }
+  .card {
+    display: grid;
+    gap: 18px;
+    padding: 20px;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-border-small);
+  }
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .privacy {
+    margin: 0;
+  }
+</style>

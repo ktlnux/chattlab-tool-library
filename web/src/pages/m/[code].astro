@@ -10,14 +10,29 @@ import Badge from "../../components/ui/Badge.astro";
 import Card from "../../components/ui/Card.astro";
 import Note from "../../components/ui/Note.astro";
 import Section from "../../components/ui/Section.astro";
-import { getMachineByCode, getMachineDetails, fileUrl, displayFilename } from "../../lib/pb";
+import IssueStatusBadge from "../../components/IssueStatusBadge.astro";
+import HistoryTimeline from "../../components/HistoryTimeline.astro";
+import LogMaintenance from "../../components/LogMaintenance.astro";
+import LocalTime from "../../components/LocalTime.astro";
+import {
+  getMachineByCode,
+  getMachineDetails,
+  getMachineHistory,
+  fileUrl,
+  displayFilename,
+  isoDate,
+  SEVERITY_LABELS,
+} from "../../lib/pb";
 
 const machine = await getMachineByCode(Astro.params.code ?? "");
 if (!machine) {
   return Astro.rewrite("/404");
 }
 
-const { troubleshooting, consumables, links } = await getMachineDetails(machine);
+const [{ troubleshooting, consumables, links, openIssues }, history] = await Promise.all([
+  getMachineDetails(machine),
+  getMachineHistory(machine),
+]);
 const contacts = machine.expand?.contacts ?? [];
 const makeModel = [machine.make, machine.model].filter(Boolean).join(" ");
 const details = [
@@ -46,6 +61,7 @@ const jumpLinks = [
   ["#troubleshooting", "Troubleshooting"],
   ["#details", "Details & specs"],
   hasDocumentation && ["#documentation", "Documentation"],
+  ["#history", "History"],
 ].filter(Boolean) as string[][];
 ---
 
@@ -136,6 +152,28 @@ const jumpLinks = [
           Stop and power it off, put an out-of-service tag on it, and contact the steward below.
         </Note>
         {
+          openIssues.length > 0 && (
+            <Card title={`Open issues (${openIssues.length})`} padded={false}>
+              <ul class="issues">
+                {openIssues.map((issue) => (
+                  <li>
+                    <a href={`/issues/${issue.id}`}>
+                      <span class="issue-title">{issue.title}</span>
+                      <span class="issue-meta">
+                        <IssueStatusBadge status={issue.status} size="small" />
+                        {issue.severity === "out_of_operation" && <Badge variant="red" size="small">{SEVERITY_LABELS.out_of_operation}</Badge>}
+                        <span class="label-12 subtle">
+                          {issue.reporter_display || "A member"} · <LocalTime iso={isoDate(issue.created)} format="date" />
+                        </span>
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )
+        }
+        {
           troubleshooting.length > 0 ? (
             <TroubleshootingList entries={troubleshooting} />
           ) : (
@@ -212,6 +250,13 @@ const jumpLinks = [
           </Section>
         )
       }
+
+      <Section id="history" title="History" description="Changes, maintenance and issues, most recent first.">
+        <div class="history-actions">
+          <LogMaintenance machineId={machine.id} machineName={machine.name} />
+        </div>
+        <HistoryTimeline events={history} />
+      </Section>
 
       <p class="updated label-12 subtle">Last updated {updated}</p>
     </div>
@@ -497,5 +542,36 @@ const jumpLinks = [
   }
   .updated {
     margin: 40px 0 0;
+  }
+  .issues {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .issues li + li {
+    border-top: 1px solid var(--border);
+  }
+  .issues a {
+    display: grid;
+    gap: 6px;
+    padding: 12px 16px;
+    color: var(--text);
+  }
+  .issues a:hover {
+    background: var(--surface-hover);
+    text-decoration: none;
+  }
+  .issue-title {
+    font-weight: 500;
+  }
+  .issue-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .history-actions {
+    display: flex;
+    justify-content: flex-start;
   }
 </style>

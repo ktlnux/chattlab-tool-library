@@ -1,0 +1,28 @@
+---
+// A date shown in the reader's own time zone. The server (running in UTC) renders the date
+// only, and the browser replaces it with the local date and time.
+interface Props {
+  iso: string;
+  /**
+   * "datetime": local day and time. "date": local day.
+   * "day": a calendar day with no time (e.g. "performed on"), shown as-is in any time zone.
+   */
+  format?: "datetime" | "date" | "day";
+}
+const { iso, format = "datetime" } = Astro.props;
+const fallback = iso ? new Date(iso).toLocaleDateString("en-US", { dateStyle: "medium", timeZone: "UTC" }) : "";
+---
+
+{iso && <time datetime={iso} data-local={format === "day" ? undefined : format}>{fallback}</time>}
+
+<script>
+  const formats = {
+    date: { dateStyle: "medium" },
+    datetime: { dateStyle: "medium", timeStyle: "short" },
+  } as const;
+  for (const el of document.querySelectorAll<HTMLTimeElement>("time[data-local]")) {
+    const date = new Date(el.dateTime);
+    if (Number.isNaN(date.getTime())) continue;
+    el.textContent = date.toLocaleString(undefined, formats[el.dataset.local as keyof typeof formats] ?? formats.datetime);
+  }
+</script>
