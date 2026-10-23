@@ -1,0 +1,64 @@
+---
+// Rich text clamped to a few lines with a "Read more" toggle.
+// The clamp is applied by the script, so without JavaScript the full text shows.
+interface Props {
+  html: string;
+  lines?: number;
+}
+const { html, lines = 3 } = Astro.props;
+---
+
+<div class="expandable" style={`--lines: ${lines}`}>
+  <div class="prose content" set:html={html} />
+  <button type="button" class="toggle" aria-expanded="false" hidden>Read more</button>
+</div>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>(".expandable")) {
+    const content = root.querySelector<HTMLElement>(".content")!;
+    const toggle = root.querySelector<HTMLButtonElement>(".toggle")!;
+    let expanded = false;
+
+    // Only offer "Read more" when the clamp actually hides something.
+    function check() {
+      if (expanded) return;
+      root.classList.add("clamped");
+      toggle.hidden = content.scrollHeight <= content.clientHeight + 1;
+      if (toggle.hidden) root.classList.remove("clamped");
+    }
+
+    toggle.addEventListener("click", () => {
+      expanded = !expanded;
+      root.classList.toggle("clamped", !expanded);
+      toggle.textContent = expanded ? "Show less" : "Read more";
+      toggle.setAttribute("aria-expanded", String(expanded));
+    });
+
+    check();
+    window.addEventListener("resize", check);
+  }
+</script>
+
+<style>
+  .clamped .content {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: var(--lines);
+    line-clamp: var(--lines);
+    overflow: hidden;
+  }
+  .toggle {
+    margin-top: 4px;
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--link);
+    cursor: pointer;
+  }
+  .toggle:hover {
+    text-decoration: underline;
+  }
+</style>

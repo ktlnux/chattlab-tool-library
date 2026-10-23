@@ -39,6 +39,7 @@ export interface Machine extends BaseRecord {
   category: string;
   area: string;
   summary: string;
+  description: string;
   photo: string;
   training_required: boolean;
   safety: string;
@@ -67,6 +68,13 @@ export interface Consumable extends BaseRecord {
   machines: string[];
 }
 
+export interface DocumentationLink extends BaseRecord {
+  machine: string;
+  title: string;
+  url: string;
+  sort: number;
+}
+
 function client() {
   const pb = new PocketBase(PB_URL);
   pb.autoCancellation(false);
@@ -91,7 +99,7 @@ export async function getMachineByCode(code: string): Promise<Machine | null> {
 
 export async function getMachineDetails(machine: Machine) {
   const pb = client();
-  const [troubleshooting, consumables] = await Promise.all([
+  const [troubleshooting, consumables, links] = await Promise.all([
     pb.collection("troubleshooting").getFullList<TroubleshootingEntry>({
       filter: pb.filter("machine = {:id}", { id: machine.id }),
       sort: "sort,created",
@@ -100,8 +108,12 @@ export async function getMachineDetails(machine: Machine) {
       filter: pb.filter("machines.id ?= {:id}", { id: machine.id }),
       sort: "name",
     }),
+    pb.collection("documentation_links").getFullList<DocumentationLink>({
+      filter: pb.filter("machine = {:id}", { id: machine.id }),
+      sort: "sort,title",
+    }),
   ]);
-  return { troubleshooting, consumables };
+  return { troubleshooting, consumables, links };
 }
 
 // Relative URL; Caddy (or the Vite dev proxy) routes /api/* to PocketBase.

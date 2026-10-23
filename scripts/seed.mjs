@@ -59,6 +59,12 @@ const machines = [
     category: "Saws",
     area: "Wood Shop",
     summary: "10\" cabinet saw with flesh-sensing blade brake. Sample entry for development.",
+    description:
+      "<p>The cabinet saw is the workhorse of the wood shop, used for ripping boards to width, crosscutting with the sled, and cutting sheet goods down to size. Its safety system senses skin contact and stops the blade within milliseconds, but it is not a substitute for safe technique.</p><p>The saw is set up with a 40-tooth combination blade for general work. Ask a steward before switching to the dado stack, which needs its own brake cartridge. The outfeed table and dust collection are shared with the jointer, so check that the blast gate is open before you start.</p>",
+    links: [
+      { title: "Manufacturer support and manuals", url: "https://www.sawstop.com/support/" },
+      { title: "Table saw safety video", url: "https://www.youtube.com/results?search_query=table+saw+safety" },
+    ],
     training_required: true,
     safety:
       "<ul><li>Safety glasses and hearing protection required.</li><li>Always use the riving knife or blade guard for through-cuts.</li><li>Never reach over the blade. Use a push stick for rips narrower than 6\".</li></ul>",
@@ -165,7 +171,7 @@ const machines = [
   },
 ];
 
-for (const { troubleshooting, consumables, ...data } of machines) {
+for (const { troubleshooting, consumables, links = [], ...data } of machines) {
   const machine = await findOrCreate("machines", `code = "${data.code}"`, { status: "working", ...data });
   for (const [i, item] of troubleshooting.entries()) {
     await findOrCreate(
@@ -176,6 +182,13 @@ for (const { troubleshooting, consumables, ...data } of machines) {
   }
   for (const item of consumables) {
     await findOrCreate("consumables", `name = ${JSON.stringify(item.name)}`, { ...item, machines: [machine.id] });
+  }
+  for (const [i, link] of links.entries()) {
+    await findOrCreate(
+      "documentation_links",
+      `machine = "${machine.id}" && url = ${JSON.stringify(link.url)}`,
+      { ...link, machine: machine.id, sort: i }
+    );
   }
   console.log(`Seeded ${machine.code} ${machine.name}`);
 }
