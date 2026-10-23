@@ -50,6 +50,8 @@
     make: string;
     model: string;
     area: string;
+    status: string;
+    statusLabel: string;
   }
 
   const form = document.getElementById("header-search") as HTMLFormElement;
@@ -117,7 +119,15 @@
       const meta = document.createElement("span");
       meta.className = "meta";
       meta.textContent = [m.code, m.area].filter(Boolean).join(" · ");
-      link.append(name, meta);
+      const text = document.createElement("span");
+      text.className = "text";
+      text.append(name, meta);
+      // Mirrors StatusBadge.astro, which can't be used in client-rendered markup.
+      const status = document.createElement("span");
+      status.className = "status";
+      status.dataset.status = m.status;
+      status.textContent = m.statusLabel;
+      link.append(text, status);
       li.append(link);
       list.append(li);
     });
@@ -304,10 +314,45 @@
   }
   .suggestions :global(a) {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     padding: 8px 10px;
     border-radius: var(--radius-sm);
     color: var(--text);
+  }
+  .suggestions :global(.text) {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .suggestions :global(.status) {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--green-200);
+    color: var(--green-900);
+  }
+  .suggestions :global(.status)::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+  .suggestions :global(.status[data-status="repair_in_progress"]) {
+    background: var(--amber-200);
+    color: var(--amber-900);
+  }
+  .suggestions :global(.status[data-status="out_of_service"]) {
+    background: var(--red-200);
+    color: var(--red-900);
   }
   .suggestions :global(a:hover),
   .suggestions :global([aria-selected="true"] a) {

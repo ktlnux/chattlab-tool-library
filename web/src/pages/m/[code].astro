@@ -3,6 +3,7 @@ import Base from "../../layouts/Base.astro";
 import ContactCard from "../../components/ContactCard.astro";
 import ConsumablesList from "../../components/ConsumablesList.astro";
 import TroubleshootingList from "../../components/TroubleshootingList.astro";
+import StatusBadge from "../../components/StatusBadge.astro";
 import Badge from "../../components/ui/Badge.astro";
 import Card from "../../components/ui/Card.astro";
 import Note from "../../components/ui/Note.astro";
@@ -60,7 +61,8 @@ const jumpLinks = [
     <div class="intro">
       <div class="badges">
         <Badge variant="gray"><span class="mono">{machine.code}</span></Badge>
-        {machine.training_required && <Badge variant="amber">Training required</Badge>}
+        <StatusBadge status={machine.status} />
+        {machine.training_required && <Badge variant="blue">Training required</Badge>}
       </div>
       <h1>{machine.name}</h1>
       {makeModel && <p class="muted">{makeModel}</p>}

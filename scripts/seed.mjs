@@ -90,6 +90,7 @@ const machines = [
   },
   {
     code: "BS01",
+    status: "repair_in_progress",
     name: "14\" Bandsaw",
     category: "Saws",
     area: "Wood Shop",
@@ -134,6 +135,7 @@ const machines = [
   },
   {
     code: "PR01",
+    status: "out_of_service",
     name: "FDM 3D Printer",
     category: "Digital Fabrication",
     area: "Digital Fab Lab",
@@ -164,7 +166,7 @@ const machines = [
 ];
 
 for (const { troubleshooting, consumables, ...data } of machines) {
-  const machine = await findOrCreate("machines", `code = "${data.code}"`, data);
+  const machine = await findOrCreate("machines", `code = "${data.code}"`, { status: "working", ...data });
   for (const [i, item] of troubleshooting.entries()) {
     await findOrCreate(
       "troubleshooting",

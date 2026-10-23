@@ -1,0 +1,32 @@
+---
+import Badge from "./ui/Badge.astro";
+import { STATUS_LABELS, type MachineStatus } from "../lib/pb";
+
+interface Props {
+  status: MachineStatus;
+  size?: "small" | "medium";
+}
+const { status, size } = Astro.props;
+const variants = {
+  working: "green",
+  repair_in_progress: "amber",
+  out_of_service: "red",
+} as const;
+// Machines saved before statuses existed have no value; treat them as working.
+const current = status in variants ? status : "working";
+---
+
+<Badge variant={variants[current]} size={size}>
+  <span class="dot" aria-hidden="true"></span>
+  <span class="visually-hidden">Status:</span>
+  {STATUS_LABELS[current]}
+</Badge>
+
+<style>
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+</style>

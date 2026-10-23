@@ -30,15 +30,21 @@ in with the account an admin created for you.
    Reuse existing spellings so the browse filters stay tidy.
 4. **summary**: one or two sentences on what the machine is for.
 5. **photo**: one clear photo of the whole machine.
-6. **training_required**: tick if members need sign-off first.
-7. **safety** and **quick_start**: use the editor's bullet and numbered lists. Keep it short;
+6. **status**: shown beside the code at the top of the machine's page:
+   - **working**: ready to use.
+   - **repair_in_progress**: someone is fixing it; members should not use it yet.
+   - **out_of_service**: broken or tagged out, with no repair under way yet.
+
+   Update it whenever a machine is tagged out or comes back into service.
+7. **training_required**: tick if members need sign-off first.
+8. **safety** and **quick_start**: use the editor's bullet and numbered lists. Keep it short;
    people read it standing at the machine.
-8. **specs**: optional extra technical detail.
-9. **documents**: upload manuals, schematics and wiring diagrams (PDF or images, up to 50 MB each).
+9. **specs**: optional extra technical detail.
+10. **documents**: upload manuals, schematics and wiring diagrams (PDF or images, up to 50 MB each).
    The file name is what members see, so name files clearly first, e.g.
    `Owners Manual.pdf` or `Wiring Diagram.pdf`. They show as "Owners manual" and "Wiring diagram",
    with a PDF tag next to them.
-10. **contacts**: pick who to contact about this machine.
+11. **contacts**: pick who to contact about this machine.
 
 ## Adding troubleshooting entries
 

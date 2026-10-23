@@ -1,6 +1,6 @@
 ---
 import Base from "../layouts/Base.astro";
-import Badge from "../components/ui/Badge.astro";
+import StatusBadge from "../components/StatusBadge.astro";
 import Note from "../components/ui/Note.astro";
 import { listMachines, fileUrl } from "../lib/pb";
 
@@ -66,15 +66,11 @@ const initialQuery = Astro.url.searchParams.get("q") ?? "";
               </div>
             )}
             <div class="body">
-              <div class="title">
-                <span class="name">{m.name}</span>
-                {m.training_required && (
-                  <Badge variant="amber" size="small">
-                    Training
-                  </Badge>
-                )}
-              </div>
-              <span class="copy-14 muted">{[m.make, m.model].filter(Boolean).join(" ") || m.category}</span>
+              <span class="name">{m.name}</span>
+              <span class="status">
+                <StatusBadge status={m.status} size="small" />
+              </span>
+              {(m.make || m.model) && <span class="copy-14 muted">{[m.make, m.model].filter(Boolean).join(" ")}</span>}
               <span class="meta label-12 subtle">
                 <span class="mono">{m.code}</span>
                 {m.area && <span>· {m.area}</span>}
@@ -196,23 +192,21 @@ const initialQuery = Astro.url.searchParams.get("q") ?? "";
   .body {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    padding: 12px 16px 16px;
+    padding: 10px 14px 12px;
   }
-  .title {
+  .status {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
+    margin: 2px 0 4px;
   }
   .name {
     font-weight: 600;
+    line-height: 22px;
     letter-spacing: -0.01em;
   }
   .meta {
     display: flex;
     gap: 4px;
-    margin-top: 6px;
+    margin-top: 2px;
   }
   #empty {
     margin-top: 8px;

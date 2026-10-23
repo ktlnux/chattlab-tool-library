@@ -21,9 +21,18 @@ export interface Contact extends BaseRecord {
   contact_link: string;
 }
 
+export type MachineStatus = "working" | "repair_in_progress" | "out_of_service";
+
+export const STATUS_LABELS: Record<MachineStatus, string> = {
+  working: "Working",
+  repair_in_progress: "Repair in progress",
+  out_of_service: "Out of service",
+};
+
 export interface Machine extends BaseRecord {
   code: string;
   name: string;
+  status: MachineStatus;
   make: string;
   model: string;
   serial: string;
