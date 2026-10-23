@@ -11,7 +11,7 @@ in with the account an admin created for you.
 > **records** (the rows of data). Don't use the gear icon on a collection, and don't add or delete
 > fields or collections. Ask a technical maintainer if a page needs a new kind of field.
 
-## The four collections
+## The collections
 
 | Collection | What goes in it |
 |---|---|
@@ -19,6 +19,7 @@ in with the account an admin created for you.
 | **troubleshooting** | Problem → fix entries, each linked to one machine |
 | **consumables** | Blades, bits, filament, cartridges. One record can be linked to several machines |
 | **contacts** | Stewards or roles members can reach out to |
+| **issue_reports** | Problems members reported from a machine page (see "Issue reports" below) |
 
 ## Adding a machine
 
@@ -72,6 +73,22 @@ is the most valuable content.
 2. Tick the machines, click **Show selected**, then **Print**.
 3. Each label is 3.5" × 2". Print on sticker paper or plain paper and laminate it. Scan a sticker
    with your phone to check it before putting it on the machine.
+
+## Issue reports
+
+When a machine's status is **working**, its page shows a **Report an issue** button. Members
+don't need to log in. Each report lands in the **issue_reports** collection with:
+
+- **machine**: which machine it's about.
+- **summary** and **details**: what the member wrote.
+- **machine_disabled**: ticked if they said the machine can't be used at all. Those reports
+  automatically switch the machine's status to **out_of_service**.
+
+Check the collection regularly; nobody is notified when a report comes in. When you act on one:
+
+1. Set the machine's **status** to **repair_in_progress** while it's being fixed (the page then
+   shows "This machine is currently under repair"), and back to **working** when it's done.
+2. Delete the report once it's dealt with, or keep it as a record of the repair.
 
 ## Removing a machine
 

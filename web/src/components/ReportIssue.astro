@@ -1,0 +1,328 @@
+---
+// "Report an issue" button and dialog for working machines. Reports go to the
+// issue_reports collection in PocketBase; a report saying the machine is completely
+// disabled marks it out of service (see pocketbase/pb_hooks/issue_reports.pb.js).
+import Button from "./ui/Button.astro";
+import Note from "./ui/Note.astro";
+
+interface Props {
+  machineId: string;
+  machineName: string;
+  machineCode: string;
+}
+const { machineId, machineName, machineCode } = Astro.props;
+---
+
+<div class="report-issue" data-machine-id={machineId}>
+  <Button type="button" variant="secondary" class="open-report">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M3 14.25V2.5M3 2.5h8.5l-1.75 3 1.75 3H3"></path>
+    </svg>
+    Report an issue
+  </Button>
+
+  <dialog class="report-dialog" aria-labelledby="report-title">
+    <form class="report-form" novalidate>
+      <header>
+        <div>
+          <h2 id="report-title" class="heading-20">Report an issue</h2>
+          <p class="copy-14 muted">{machineName} · <span class="mono">{machineCode}</span></p>
+        </div>
+        <button type="button" class="close" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+            <path d="m4 4 8 8M12 4l-8 8"></path>
+          </svg>
+        </button>
+      </header>
+
+      <div class="fields">
+        <label class="field">
+          <span class="label">What's wrong?</span>
+          <input class="input" name="summary" required maxlength="120" placeholder="e.g. Blade guard is cracked" autocomplete="off" />
+        </label>
+
+        <label class="field">
+          <span class="label">Details <span class="subtle">(optional)</span></span>
+          <textarea
+            class="input"
+            name="details"
+            maxlength="2000"
+            rows="4"
+            placeholder="What happened, what you tried, and anything a steward should know"></textarea>
+        </label>
+
+        <fieldset class="field">
+          <legend class="label">Can the machine still be used?</legend>
+          <label class="option">
+            <input type="radio" name="usable" value="works" required />
+            <span>
+              <span class="option-title">Yes, it still works</span>
+              <span class="label-12 muted">It needs repair, but can be used for now.</span>
+            </span>
+          </label>
+          <label class="option">
+            <input type="radio" name="usable" value="disabled" />
+            <span>
+              <span class="option-title">No, it's completely disabled</span>
+              <span class="label-12 muted">It will be marked out of service.</span>
+            </span>
+          </label>
+        </fieldset>
+
+        <!-- Spam trap: hidden from people, filled in by bots. -->
+        <label class="trap" aria-hidden="true">
+          Website <input name="website" tabindex="-1" autocomplete="off" />
+        </label>
+
+        <div class="form-error" hidden>
+          <Note variant="error"><span class="form-error-text"></span></Note>
+        </div>
+      </div>
+
+      <footer>
+        <Button type="button" variant="secondary" class="cancel">Cancel</Button>
+        <Button type="submit" class="submit">Send report</Button>
+      </footer>
+    </form>
+
+    <div class="report-done" hidden>
+      <Note variant="success" label="Thanks!">
+        <span class="done-text"></span>
+      </Note>
+      <footer>
+        <Button type="button" class="done">Done</Button>
+      </footer>
+    </div>
+  </dialog>
+</div>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>(".report-issue")) {
+    const machineId = root.dataset.machineId!;
+    const dialog = root.querySelector("dialog")!;
+    const form = root.querySelector<HTMLFormElement>(".report-form")!;
+    const done = root.querySelector<HTMLElement>(".report-done")!;
+    const doneText = root.querySelector<HTMLElement>(".done-text")!;
+    const errorBox = root.querySelector<HTMLElement>(".form-error")!;
+    const errorText = root.querySelector<HTMLElement>(".form-error-text")!;
+    const submit = root.querySelector<HTMLButtonElement>(".submit")!;
+    let markedOutOfService = false;
+
+    function showError(message: string) {
+      errorText.textContent = message;
+      errorBox.hidden = false;
+    }
+
+    function open() {
+      form.reset();
+      form.hidden = false;
+      done.hidden = true;
+      errorBox.hidden = true;
+      dialog.showModal();
+      form.querySelector<HTMLInputElement>("[name=summary]")!.focus();
+    }
+
+    function close() {
+      dialog.close();
+      // Reload so the page shows the new "out of service" status.
+      if (markedOutOfService) window.location.reload();
+    }
+
+    root.querySelector(".open-report")!.addEventListener("click", open);
+    root.querySelector(".close")!.addEventListener("click", close);
+    root.querySelector(".cancel")!.addEventListener("click", close);
+    root.querySelector(".done")!.addEventListener("click", close);
+    // Clicking the dimmed backdrop closes the dialog.
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) close();
+    });
+    dialog.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      close();
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      errorBox.hidden = true;
+      const data = new FormData(form);
+      const summary = String(data.get("summary") ?? "").trim();
+      const usable = data.get("usable");
+      if (!summary) return showError("Please say briefly what's wrong.");
+      if (!usable) return showError("Please choose whether the machine can still be used.");
+
+      const disabled = usable === "disabled";
+      submit.disabled = true;
+      submit.textContent = "Sending…";
+      try {
+        const res = await fetch("/api/collections/issue_reports/records", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            machine: machineId,
+            summary,
+            details: String(data.get("details") ?? "").trim(),
+            machine_disabled: disabled,
+            website: data.get("website"),
+          }),
+        });
+        if (res.status === 429) {
+          return showError("Too many reports have been sent from this network. Please try again in a few minutes.");
+        }
+        if (!res.ok) {
+          return showError("Your report couldn't be sent. Please try again, or tell a steward directly.");
+        }
+        markedOutOfService = disabled;
+        doneText.textContent = disabled
+          ? "Your report has been recorded for the stewards, and this machine is now marked out of service."
+          : "Your report has been recorded for the stewards.";
+        form.hidden = true;
+        done.hidden = false;
+        root.querySelector<HTMLButtonElement>(".done")!.focus();
+      } catch {
+        showError("Your report couldn't be sent. Check your connection and try again.");
+      } finally {
+        submit.disabled = false;
+        submit.textContent = "Send report";
+      }
+    });
+  }
+</script>
+
+<style>
+  .report-dialog {
+    width: min(480px, calc(100% - 32px));
+    max-height: calc(100dvh - 32px);
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: var(--shadow-border-medium), 0 24px 48px -12px #00000040;
+    overflow-y: auto;
+  }
+  .report-dialog::backdrop {
+    background: #0000004d;
+  }
+  /* On phones, sit near the top so the keyboard is less likely to cover the form. */
+  @media (max-width: 719px) {
+    .report-dialog {
+      margin-top: 16px;
+    }
+  }
+  :global(html:has(.report-dialog[open])) {
+    overflow: hidden;
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 20px 20px 0;
+  }
+  .heading-20 {
+    font-size: 20px;
+    line-height: 26px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+  header p {
+    margin: 2px 0 0;
+  }
+  .close {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    margin: -4px -8px 0 0;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .close:hover {
+    background: var(--gray-alpha-100);
+  }
+
+  .fields {
+    display: grid;
+    gap: 18px;
+    padding: 20px;
+  }
+  .field {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    min-width: 0;
+  }
+  .label {
+    font-size: 14px;
+    font-weight: 500;
+    padding: 0;
+  }
+  textarea.input {
+    height: auto;
+    padding: 10px 12px;
+    line-height: 20px;
+    resize: vertical;
+  }
+  .option {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-border);
+    cursor: pointer;
+  }
+  .option + .option {
+    margin-top: 2px;
+  }
+  .option:has(input:checked) {
+    box-shadow: 0 0 0 1.5px var(--gray-1000);
+  }
+  .option input {
+    margin: 2px 0 0;
+    accent-color: var(--gray-1000);
+    width: 16px;
+    height: 16px;
+    flex: none;
+  }
+  .option > span {
+    display: grid;
+    gap: 2px;
+  }
+  /* Same size as the question label above; the description is scaled down to match. */
+  .option-title {
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 500;
+  }
+  .trap {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--background-200);
+  }
+  .report-done {
+    padding-top: 20px;
+  }
+  .report-done > :global(.note) {
+    margin: 0 20px 20px;
+  }
+</style>

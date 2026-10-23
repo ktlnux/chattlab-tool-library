@@ -4,6 +4,7 @@ import ContactCard from "../../components/ContactCard.astro";
 import ConsumablesList from "../../components/ConsumablesList.astro";
 import TroubleshootingList from "../../components/TroubleshootingList.astro";
 import StatusBadge from "../../components/StatusBadge.astro";
+import ReportIssue from "../../components/ReportIssue.astro";
 import Badge from "../../components/ui/Badge.astro";
 import Card from "../../components/ui/Card.astro";
 import Note from "../../components/ui/Note.astro";
@@ -62,11 +63,29 @@ const jumpLinks = [
       <div class="badges">
         <Badge variant="gray"><span class="mono">{machine.code}</span></Badge>
         <StatusBadge status={machine.status} />
-        {machine.training_required && <Badge variant="blue">Training required</Badge>}
       </div>
       <h1>{machine.name}</h1>
       {makeModel && <p class="muted">{makeModel}</p>}
       {machine.summary && <p class="summary">{machine.summary}</p>}
+    </div>
+    <div class="header-extra">
+      {machine.training_required && <Badge variant="blue">Training required</Badge>}
+      <div class="status-block">
+        {
+          machine.status === "out_of_service" ? (
+            <Note variant="error" label="Out of service.">
+              This machine is out of service and cannot be used. Contact the{" "}
+              {contacts.length > 0 ? <a href="#contacts">area lead</a> : "area lead"} for more information.
+            </Note>
+          ) : machine.status === "repair_in_progress" ? (
+            <Note variant="warning" label="Under repair.">
+              This machine is currently under repair.
+            </Note>
+          ) : (
+            <ReportIssue machineId={machine.id} machineName={machine.name} machineCode={machine.code} />
+          )
+        }
+      </div>
     </div>
   </header>
 
@@ -91,11 +110,13 @@ const jumpLinks = [
         }
         {
           contacts.length > 0 && (
-            <Card title="Who to contact" padded={false}>
-              {contacts.map((c) => (
-                <ContactCard contact={c} />
-              ))}
-            </Card>
+            <div id="contacts" class="contacts-anchor">
+              <Card title="Who to contact" padded={false}>
+                {contacts.map((c) => (
+                  <ContactCard contact={c} />
+                ))}
+              </Card>
+            </div>
           )
         }
       </Section>
@@ -242,7 +263,8 @@ const jumpLinks = [
     align-items: start;
   }
   .photo {
-    order: 2;
+    grid-column: 2;
+    grid-row: 1;
     width: 100%;
     aspect-ratio: 1;
     object-fit: cover;
@@ -252,13 +274,19 @@ const jumpLinks = [
   @media (min-width: 720px) {
     .machine-header.has-photo {
       grid-template-columns: 340px 1fr;
-      align-items: center;
-      gap: 32px;
+      grid-template-rows: auto 1fr;
+      align-items: start;
+      gap: 16px 32px;
     }
     .photo {
-      order: 0;
+      grid-column: 1;
+      grid-row: 1 / span 2;
       aspect-ratio: 4 / 3;
       border-radius: var(--radius-lg);
+    }
+    .has-photo .intro,
+    .has-photo .header-extra {
+      grid-column: 2;
     }
   }
   .badges {
@@ -274,6 +302,32 @@ const jumpLinks = [
     color: var(--text-muted);
     max-width: 60ch;
     padding-top: 8px;
+  }
+  /* Training badge and status alert/report button: full width under the intro on phones,
+     under the intro beside the photo on desktop. */
+  .header-extra {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .has-photo .intro {
+    grid-row: 1;
+  }
+  @media (max-width: 719px) {
+    .has-photo .intro {
+      grid-column: 1;
+    }
+  }
+  .status-block {
+    align-self: stretch;
+  }
+  .status-block :global(.note) {
+    max-width: 60ch;
+  }
+  .contacts-anchor {
+    scroll-margin-top: 80px;
   }
   /* Phones: jump links are a horizontal scrolling row above the content. */
   .jump {

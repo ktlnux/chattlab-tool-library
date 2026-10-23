@@ -111,6 +111,12 @@ code {
 .input:focus-visible {
   box-shadow: var(--focus-ring);
 }
+/* iOS zooms the page into any focused field with text smaller than 16px. */
+@media (max-width: 719px) {
+  .input {
+    font-size: 16px;
+  }
+}
 select.input {
   appearance: none;
   padding-right: 36px;
