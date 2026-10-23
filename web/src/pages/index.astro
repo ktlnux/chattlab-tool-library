@@ -8,6 +8,8 @@ const machines = await listMachines();
 const unique = (values: string[]) => [...new Set(values.filter(Boolean))].sort();
 const areas = unique(machines.map((m) => m.area));
 const categories = unique(machines.map((m) => m.category));
+// Set when the header search is submitted without picking a suggestion.
+const initialQuery = Astro.url.searchParams.get("q") ?? "";
 ---
 
 <Base title="All machines">
@@ -24,7 +26,14 @@ const categories = unique(machines.map((m) => m.category));
         <circle cx="7" cy="7" r="4.75"></circle>
         <path d="m10.5 10.5 3.25 3.25"></path>
       </svg>
-      <input class="input" type="search" name="q" placeholder="Search name, make, model, code…" aria-label="Search machines" />
+      <input
+        class="input"
+        type="search"
+        name="q"
+        value={initialQuery}
+        placeholder="Search name, make, model, code…"
+        aria-label="Search machines"
+      />
     </div>
     <select class="input" name="area" aria-label="Filter by area">
       <option value="">All areas</option>
@@ -106,6 +115,7 @@ const categories = unique(machines.map((m) => m.category));
     count.textContent = `${shown} ${shown === 1 ? "machine" : "machines"}`;
   }
   form.addEventListener("input", apply);
+  apply();
 </script>
 
 <style>

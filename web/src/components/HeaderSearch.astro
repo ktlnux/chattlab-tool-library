@@ -1,0 +1,443 @@
+---
+// Header search with machine suggestions.
+// Desktop: a search box on the right of the header with a dropdown of suggestions.
+// Phones: a search icon button that opens a full-screen search sized to the area above the keyboard.
+// Without JavaScript it still works as a form that searches the browse page.
+---
+
+<div class="search-root">
+  <button type="button" class="open-button" aria-label="Search machines" aria-controls="header-search" aria-expanded="false">
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+      <circle cx="7" cy="7" r="4.75"></circle>
+      <path d="m10.5 10.5 3.25 3.25"></path>
+    </svg>
+  </button>
+
+  <form id="header-search" class="header-search" action="/" method="get" role="search">
+    <div class="bar">
+      <div class="field">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+          <circle cx="7" cy="7" r="4.75"></circle>
+          <path d="m10.5 10.5 3.25 3.25"></path>
+        </svg>
+        <input
+          id="header-search-input"
+          class="input"
+          type="search"
+          name="q"
+          placeholder="Search machines…"
+          autocomplete="off"
+          enterkeyhint="search"
+          role="combobox"
+          aria-label="Search machines"
+          aria-autocomplete="list"
+          aria-expanded="false"
+          aria-controls="header-search-list"
+        />
+        <kbd aria-hidden="true">/</kbd>
+      </div>
+      <button type="button" class="cancel-button">Cancel</button>
+    </div>
+    <p class="hint">Search by machine name or code.</p>
+    <ul id="header-search-list" class="suggestions" role="listbox" aria-label="Machines" hidden></ul>
+  </form>
+</div>
+
+<script>
+  interface Entry {
+    code: string;
+    name: string;
+    make: string;
+    model: string;
+    area: string;
+  }
+
+  const form = document.getElementById("header-search") as HTMLFormElement;
+  const input = document.getElementById("header-search-input") as HTMLInputElement;
+  const list = document.getElementById("header-search-list") as HTMLUListElement;
+  const openButton = document.querySelector<HTMLButtonElement>(".search-root .open-button")!;
+  const cancelButton = form.querySelector<HTMLButtonElement>(".cancel-button")!;
+  const desktop = window.matchMedia("(min-width: 720px)");
+  const MAX_RESULTS = 8;
+
+  let machines: Promise<Entry[]> | null = null;
+  let results: Entry[] = [];
+  let active = -1;
+
+  // Fetch the machine list once, the first time the search is used.
+  function loadMachines() {
+    machines ??= fetch("/search.json")
+      .then((res) => (res.ok ? res.json() : []))
+      .catch(() => []);
+    return machines;
+  }
+
+  function match(all: Entry[], query: string) {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    const scored: [number, Entry][] = [];
+    for (const m of all) {
+      const name = m.name.toLowerCase();
+      const code = m.code.toLowerCase();
+      // Rank: code match, name starts with query, a word starts with query, name contains query.
+      let score = -1;
+      if (code.startsWith(q)) score = 0;
+      else if (name.startsWith(q)) score = 1;
+      else if (name.split(/\s+/).some((word) => word.startsWith(q))) score = 2;
+      else if (name.includes(q)) score = 3;
+      if (score >= 0) scored.push([score, m]);
+    }
+    return scored
+      .sort((a, b) => a[0] - b[0] || a[1].name.localeCompare(b[1].name))
+      .slice(0, MAX_RESULTS)
+      .map(([, m]) => m);
+  }
+
+  function render() {
+    list.replaceChildren();
+    if (!input.value.trim()) return closeList();
+
+    if (results.length === 0) {
+      const empty = document.createElement("li");
+      empty.className = "empty";
+      empty.textContent = "No machines found";
+      list.append(empty);
+    }
+    results.forEach((m, i) => {
+      const li = document.createElement("li");
+      li.id = `header-search-option-${i}`;
+      li.role = "option";
+      li.setAttribute("aria-selected", String(i === active));
+      const link = document.createElement("a");
+      link.href = `/m/${m.code}`;
+      link.tabIndex = -1;
+      const name = document.createElement("span");
+      name.className = "name";
+      name.textContent = m.name;
+      const meta = document.createElement("span");
+      meta.className = "meta";
+      meta.textContent = [m.code, m.area].filter(Boolean).join(" · ");
+      link.append(name, meta);
+      li.append(link);
+      list.append(li);
+    });
+
+    list.hidden = false;
+    form.classList.add("has-results");
+    input.setAttribute("aria-expanded", "true");
+    if (active >= 0) {
+      input.setAttribute("aria-activedescendant", `header-search-option-${active}`);
+      list.children[active]?.scrollIntoView({ block: "nearest" });
+    } else {
+      input.removeAttribute("aria-activedescendant");
+    }
+  }
+
+  function closeList() {
+    list.hidden = true;
+    active = -1;
+    form.classList.remove("has-results");
+    input.setAttribute("aria-expanded", "false");
+    input.removeAttribute("aria-activedescendant");
+  }
+
+  // --- Full-screen search on phones ---
+
+  // Size the overlay to the visible area above the on-screen keyboard (iOS Safari doesn't
+  // resize the page for the keyboard, so a plain full-height overlay would hide results behind it).
+  function fitToVisibleArea() {
+    const vv = window.visualViewport;
+    if (!vv || !form.classList.contains("open")) return;
+    form.style.top = `${vv.offsetTop}px`;
+    form.style.height = `${vv.height}px`;
+  }
+
+  function openOverlay() {
+    form.classList.add("open");
+    openButton.setAttribute("aria-expanded", "true");
+    document.documentElement.classList.add("search-open");
+    fitToVisibleArea();
+    // Must run synchronously inside the tap for iOS to show the keyboard.
+    input.focus();
+    loadMachines();
+    // Let the phone's back button close the search instead of leaving the page.
+    history.pushState({ searchOpen: true }, "");
+  }
+
+  function closeOverlay() {
+    if (!form.classList.contains("open")) return;
+    form.classList.remove("open");
+    form.style.top = "";
+    form.style.height = "";
+    openButton.setAttribute("aria-expanded", "false");
+    document.documentElement.classList.remove("search-open");
+    input.blur();
+    openButton.focus();
+  }
+
+  openButton.addEventListener("click", openOverlay);
+  cancelButton.addEventListener("click", () => {
+    if (history.state?.searchOpen) history.back(); // triggers popstate, which closes it
+    else closeOverlay();
+  });
+  window.addEventListener("popstate", closeOverlay);
+  window.visualViewport?.addEventListener("resize", fitToVisibleArea);
+  window.visualViewport?.addEventListener("scroll", fitToVisibleArea);
+  // Some browsers only fire a window resize when the keyboard or viewport changes.
+  window.addEventListener("resize", fitToVisibleArea);
+  // Rotating to a desktop-width screen while open: drop back to the normal header.
+  desktop.addEventListener("change", (e) => {
+    if (e.matches) closeOverlay();
+  });
+
+  // --- Typing and keyboard navigation ---
+
+  input.addEventListener("focus", loadMachines);
+  input.addEventListener("input", async () => {
+    const query = input.value;
+    const all = await loadMachines();
+    if (query !== input.value) return; // a newer keystroke has taken over
+    results = match(all, query);
+    active = -1;
+    render();
+  });
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      if (list.hidden || results.length === 0) return;
+      event.preventDefault();
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      active = (active + step + results.length) % results.length;
+      render();
+    } else if (event.key === "Enter" && active >= 0) {
+      // Open the highlighted machine instead of searching the browse page.
+      event.preventDefault();
+      window.location.href = `/m/${results[active].code}`;
+    } else if (event.key === "Escape") {
+      if (!list.hidden) closeList();
+      else if (form.classList.contains("open")) cancelButton.click();
+      else input.blur();
+    }
+  });
+
+  // On desktop, close the dropdown when clicking anywhere outside the search.
+  document.addEventListener("pointerdown", (event) => {
+    if (desktop.matches && !form.contains(event.target as Node)) closeList();
+  });
+
+  // "/" focuses the search on desktop, unless the reader is already typing somewhere.
+  document.addEventListener("keydown", (event) => {
+    const target = event.target as HTMLElement;
+    if (event.key !== "/" || target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+    if (!desktop.matches) return;
+    event.preventDefault();
+    input.focus();
+  });
+</script>
+
+<style>
+  .search-root {
+    margin-left: auto;
+  }
+
+  /* ---------- Desktop: inline search box with dropdown ---------- */
+  .open-button,
+  .cancel-button,
+  .hint {
+    display: none;
+  }
+  .header-search {
+    position: relative;
+    width: 280px;
+  }
+  .field {
+    position: relative;
+  }
+  .field > svg {
+    position: absolute;
+    left: 10px;
+    top: 8px;
+    color: var(--text-subtle);
+    pointer-events: none;
+  }
+  .input {
+    width: 100%;
+    height: 32px;
+    padding: 0 32px;
+    background: var(--background-200);
+  }
+  .input::-webkit-search-cancel-button {
+    display: none;
+  }
+  kbd {
+    position: absolute;
+    right: 8px;
+    top: 6px;
+    min-width: 20px;
+    height: 20px;
+    display: grid;
+    place-items: center;
+    border-radius: 4px;
+    background: var(--surface);
+    box-shadow: var(--shadow-border);
+    font: 500 12px/1 var(--font-mono);
+    color: var(--text-subtle);
+    pointer-events: none;
+  }
+  .input:focus ~ kbd,
+  .input:not(:placeholder-shown) ~ kbd {
+    display: none;
+  }
+  .suggestions {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 4px;
+    list-style: none;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-border-medium), 0 12px 24px -8px #00000024;
+    max-height: 360px;
+    overflow-y: auto;
+  }
+  .suggestions :global(a) {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    color: var(--text);
+  }
+  .suggestions :global(a:hover),
+  .suggestions :global([aria-selected="true"] a) {
+    background: var(--gray-alpha-100);
+    text-decoration: none;
+  }
+  .suggestions :global(.name) {
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .suggestions :global(.meta) {
+    font: 12px/16px var(--font-mono);
+    color: var(--text-subtle);
+  }
+  .suggestions :global(.empty) {
+    padding: 8px 10px;
+    font-size: 14px;
+    color: var(--text-subtle);
+  }
+
+  /* ---------- Phones: icon button + full-screen search ---------- */
+  @media (max-width: 719px) {
+    .open-button {
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      margin-right: -8px;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .open-button:active {
+      background: var(--gray-alpha-100);
+    }
+
+    .header-search {
+      display: none;
+    }
+    /* top and height are set from the visual viewport in JS; these are the fallbacks. */
+    .header-search.open {
+      position: fixed;
+      z-index: 100;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      background: var(--background-100);
+    }
+    .bar {
+      flex: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 56px;
+      padding: 0 8px 0 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .field {
+      flex: 1;
+    }
+    .field > svg {
+      top: 12px;
+    }
+    /* 16px text stops iOS from zooming the page when the input is focused. */
+    .input {
+      height: 40px;
+      font-size: 16px;
+      padding-right: 12px;
+    }
+    kbd {
+      display: none;
+    }
+    .cancel-button {
+      display: block;
+      flex: none;
+      height: 40px;
+      padding: 0 8px;
+      border: none;
+      background: transparent;
+      font: inherit;
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--link);
+      cursor: pointer;
+    }
+    .hint {
+      display: block;
+      margin: 0;
+      padding: 16px;
+      font-size: 14px;
+      color: var(--text-subtle);
+    }
+    .has-results .hint {
+      display: none;
+    }
+    /* Results fill the space between the search bar and the keyboard, and scroll within it. */
+    .suggestions {
+      position: static;
+      flex: 1;
+      min-height: 0;
+      max-height: none;
+      padding: 0;
+      border-radius: 0;
+      box-shadow: none;
+      background: transparent;
+      overscroll-behavior: contain;
+    }
+    .suggestions :global(li + li) {
+      border-top: 1px solid var(--border);
+    }
+    .suggestions :global(a) {
+      padding: 12px 16px;
+      border-radius: 0;
+    }
+    .suggestions :global(.name) {
+      font-size: 16px;
+    }
+    .suggestions :global(.empty) {
+      padding: 16px;
+    }
+  }
+
+  /* Stop the page behind the full-screen search from scrolling. */
+  :global(html.search-open),
+  :global(html.search-open body) {
+    overflow: hidden;
+  }
+</style>

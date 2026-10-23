@@ -1,5 +1,6 @@
 ---
 import { Font } from "astro:assets";
+import HeaderSearch from "../components/HeaderSearch.astro";
 import "../styles/global.css";
 
 interface Props {
@@ -12,7 +13,8 @@ const { title, description = "Documentation for the tools and machines at Chattl
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- resizes-content: on Android, the on-screen keyboard shrinks the page instead of covering it. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content" />
     <meta name="description" content={description} />
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
@@ -34,6 +36,7 @@ const { title, description = "Documentation for the tools and machines at Chattl
           <span class="slash" aria-hidden="true">/</span>
           <span class="muted">Tool Library</span>
         </a>
+        <HeaderSearch />
       </div>
     </header>
     <main>
@@ -58,6 +61,10 @@ const { title, description = "Documentation for the tools and machines at Chattl
     backdrop-filter: saturate(180%) blur(8px);
     border-bottom: 1px solid var(--border);
   }
+  /* backdrop-filter would make the full-screen phone search position itself inside the header. */
+  :global(html.search-open) .site-header {
+    backdrop-filter: none;
+  }
   .inner {
     max-width: var(--content-width);
     margin: 0 auto;
@@ -67,6 +74,7 @@ const { title, description = "Documentation for the tools and machines at Chattl
     height: 56px;
     display: flex;
     align-items: center;
+    gap: 16px;
   }
   .brand {
     display: flex;
