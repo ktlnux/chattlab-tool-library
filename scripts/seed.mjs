@@ -1,14 +1,12 @@
 // Loads sample machines into a local PocketBase for development.
-// Usage: PB_EMAIL=... PB_PASSWORD=... node scripts/seed.mjs
-// Skips anything that already exists, so it is safe to re-run. Do not run against production.
+// Usage: node scripts/seed.mjs
+// Logs in as the local dev superuser from scripts/dev-superuser.sh (override with PB_EMAIL /
+// PB_PASSWORD). Skips anything that already exists, so it is safe to re-run.
+// Do not run against production.
 
 const PB_URL = process.env.PB_URL ?? "http://127.0.0.1:8090";
-const { PB_EMAIL, PB_PASSWORD } = process.env;
-
-if (!PB_EMAIL || !PB_PASSWORD) {
-  console.error("Set PB_EMAIL and PB_PASSWORD to a local superuser's credentials.");
-  process.exit(1);
-}
+const PB_EMAIL = process.env.PB_EMAIL ?? "dev@example.test";
+const PB_PASSWORD = process.env.PB_PASSWORD ?? "devpassword123";
 
 let token = "";
 
@@ -36,6 +34,31 @@ async function findOrCreate(collection, filter, record) {
   identity: PB_EMAIL,
   password: PB_PASSWORD,
 }));
+
+// A member account with the same email, for trying the site's sign-in. Members sign in with
+// emailed codes; locally, scripts/dev-pocketbase.sh prints the code in its terminal instead.
+// Fills in the profile if the account already exists without one.
+const devProfile = { first_name: "Dev", last_name: "Member", preferred_contact: "email" };
+const existingMember = await api(
+  "GET",
+  `/api/collections/users/records?perPage=1&filter=${encodeURIComponent(`email = "${PB_EMAIL}"`)}`
+);
+if (existingMember.items.length) {
+  const member = existingMember.items[0];
+  const missing = Object.fromEntries(Object.entries(devProfile).filter(([field]) => !member[field]));
+  if (Object.keys(missing).length) await api("PATCH", `/api/collections/users/records/${member.id}`, missing);
+} else {
+  // Members never use a password, but PocketBase requires one.
+  const password = crypto.randomUUID().replaceAll("-", "");
+  await api("POST", "/api/collections/users/records", {
+    email: PB_EMAIL,
+    password,
+    passwordConfirm: password,
+    verified: true,
+    ...devProfile,
+  });
+}
+console.log(`Dev member: ${PB_EMAIL} (sign in at http://localhost:4321/signin)`);
 
 const woodSteward = await findOrCreate("contacts", `name = "Wood Shop Steward"`, {
   name: "Wood Shop Steward",

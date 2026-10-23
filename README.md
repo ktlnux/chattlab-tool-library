@@ -27,12 +27,19 @@ Requires Node 22.23+ (or 24).
 ./scripts/dev-pocketbase.sh
 ```
 
-The first run downloads PocketBase into `pocketbase/bin/` and applies the migrations. Open the link
-it prints to create a local superuser, then in a second terminal:
+The first run downloads PocketBase into `pocketbase/bin/` and applies the migrations. In a second
+terminal, create the dev superuser, then load the sample machines and the dev member (see
+[Dev accounts](#dev-accounts)):
 
 ```bash
-PB_EMAIL=you@example.com PB_PASSWORD=yourpassword node scripts/seed.mjs
+./scripts/dev-superuser.sh
 ```
+
+```bash
+node scripts/seed.mjs
+```
+
+Then start the site:
 
 ```bash
 cd web && npm install && npm run dev
@@ -40,6 +47,49 @@ cd web && npm install && npm run dev
 
 The site runs at http://localhost:4321. In development, Vite proxies `/api` and `/_/` to
 PocketBase, the same way Caddy does in production.
+
+### Dev accounts
+
+There are two kinds of login, and local development has one of each, both using
+`dev@example.test`:
+
+| | Dev superuser | Dev member |
+|---|---|---|
+| What it's for | The PocketBase dashboard (editing machines, reading issue reports) | The site itself (reporting issues as a member, posting issue updates, logging maintenance) |
+| Where to sign in | http://127.0.0.1:8090/_/ | http://localhost:4321/signin |
+| How | Password `devpassword123` | Emailed 6-digit code, **printed in the PocketBase terminal** locally |
+| Created by | `./scripts/dev-superuser.sh` | `node scripts/seed.mjs` |
+
+**Signing in as the dev member:** enter `dev@example.test` on the site's sign-in page, then look
+in the terminal running `./scripts/dev-pocketbase.sh` for a line like:
+
+```
+[dev] Sign-in code for dev@example.test: 123456  (printed here, not emailed)
+```
+
+That works for any email you try locally (a new email creates a new member), so no mail server
+is needed. The dev script turns this on with `PB_DEV_PRINT_CODES=1`
+(`pocketbase/pb_hooks/dev_signin_codes.pb.js`); production never sets it and emails codes as
+normal.
+
+- **Create the dev superuser, or reset its password** (PocketBase must have been started once so
+  the database exists; it can be running or stopped):
+  ```bash
+  ./scripts/dev-superuser.sh
+  ```
+- **Create the dev member** (and sample machines; PocketBase must be running):
+  ```bash
+  node scripts/seed.mjs
+  ```
+- **Use your own email** for both by setting `PB_EMAIL` (and `PB_PASSWORD` for the superuser):
+  ```bash
+  PB_EMAIL=you@example.com PB_PASSWORD=a-local-password ./scripts/dev-superuser.sh
+  ```
+  ```bash
+  PB_EMAIL=you@example.com PB_PASSWORD=a-local-password node scripts/seed.mjs
+  ```
+- These accounts only exist in your local `pocketbase/pb_data`, which isn't committed. Production
+  accounts are created on the server; see [docs/deploy.md](docs/deploy.md).
 
 ### Changing the schema
 
