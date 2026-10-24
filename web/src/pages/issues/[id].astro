@@ -124,13 +124,13 @@ const closed = issue.status === "completed";
 </Base>
 
 <script>
-  import { pb, currentMember, errorMessage, signInUrl } from "../../lib/client";
+  import { pb, memberReady, errorMessage, signInUrl } from "../../lib/client";
 
   const section = document.querySelector<HTMLElement>(".add-update")!;
   const form = section.querySelector<HTMLFormElement>(".update-form")!;
   section.querySelector<HTMLAnchorElement>(".sign-in-link")!.href = signInUrl();
 
-  if (currentMember()) {
+  if (await memberReady) {
     section.querySelector<HTMLElement>(".signed-out")!.hidden = true;
     form.hidden = false;
   }

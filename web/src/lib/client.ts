@@ -31,16 +31,82 @@ export function currentMember(): Member | null {
   return record as Member;
 }
 
-/** Refresh the saved sign-in with the server, dropping it if the account is gone. */
+// Members stay signed in on a device indefinitely:
+// - Sign-in tokens last a year, and are renewed at most once a day while the site is in use.
+// - Each new token is also kept in a long-lived cookie set by the server (pages/session.ts).
+//   Safari clears localStorage after 7 days without a visit, but not server-set cookies, so
+//   a device that only scans a sticker now and then gets its sign-in back from the cookie.
+const REFRESHED_AT = "member_refreshed_at";
+/** The last member email used on this device, so signing back in only needs the password. */
+export const LAST_EMAIL = "last_email";
+const DAY = 24 * 60 * 60 * 1000;
+let tokenInCookie = "";
+
+function readLocal(key: string) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function writeLocal(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {}
+}
+
+pb.authStore.onChange((token, record) => {
+  if (token && record?.collectionName === "users") {
+    writeLocal(REFRESHED_AT, String(Date.now()));
+    writeLocal(LAST_EMAIL, record.email);
+    if (token === tokenInCookie) return;
+    tokenInCookie = token;
+    // keepalive: signing in and out navigate away straight after, which would cancel these.
+    fetch("/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+      keepalive: true,
+    }).catch(() => {});
+  } else if (!token) {
+    tokenInCookie = "";
+    fetch("/session", { method: "DELETE", keepalive: true }).catch(() => {});
+  }
+});
+
+/** Renew the saved sign-in with the server, dropping it if the account is gone. */
 export async function refreshMember(): Promise<Member | null> {
   if (!currentMember()) return null;
   try {
     await pb.collection("users").authRefresh();
   } catch (err) {
+    // Offline or server unreachable: keep the sign-in and try again later.
     if (err instanceof ClientResponseError && err.status !== 0) pb.authStore.clear();
   }
   return currentMember();
 }
+
+async function restoreMember(): Promise<Member | null> {
+  if (currentMember()) {
+    if (Date.now() - Number(readLocal(REFRESHED_AT) ?? 0) > DAY) await refreshMember();
+    return currentMember();
+  }
+  try {
+    const res = await fetch("/session");
+    if (res.status === 200) {
+      const { token, record } = await res.json();
+      tokenInCookie = token;
+      pb.authStore.save(token, record);
+    }
+  } catch {}
+  return currentMember();
+}
+
+/**
+ * The signed-in member once this page has restored and renewed the sign-in. Await this
+ * instead of calling currentMember() when a page first decides what to show.
+ */
+export const memberReady: Promise<Member | null> = restoreMember();
 
 /** "Kim Reyes" -> "Kim R.", matching how the server shows names. */
 export function shortName(first: string, last: string) {

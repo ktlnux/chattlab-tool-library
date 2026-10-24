@@ -88,6 +88,10 @@ production never sets it and emails the link as normal.
   ```bash
   PB_EMAIL=you@example.com PB_PASSWORD=a-local-password node scripts/seed.mjs
   ```
+- Member sign-ins last a year and renew while the site is used, with a backup copy in a cookie
+  set by `web/src/pages/session.ts` so Safari's storage clearing doesn't sign members out. To
+  test signing in from scratch, sign out from the account page (clearing localStorage alone gets
+  restored from the cookie).
 - These accounts only exist in your local `pocketbase/pb_data`, which isn't committed. Production
   accounts are created on the server; see [docs/deploy.md](docs/deploy.md).
 

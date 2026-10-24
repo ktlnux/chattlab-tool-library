@@ -58,7 +58,7 @@ import ContactFields from "../components/ContactFields.astro";
 </Base>
 
 <script>
-  import { pb, currentMember, refreshMember, missingContactInfo, errorMessage, signInUrl } from "../lib/client";
+  import { pb, currentMember, memberReady, refreshMember, missingContactInfo, errorMessage, signInUrl } from "../lib/client";
   import { fillContactFields, readContactFields } from "../components/contact-fields";
 
   const root = document.querySelector<HTMLElement>(".account")!;
@@ -67,6 +67,7 @@ import ContactFields from "../components/ContactFields.astro";
   const requested = params.get("next");
   const next = requested && requested.startsWith("/") && !requested.startsWith("//") ? requested : null;
 
+  await memberReady;
   const member = (await refreshMember()) ?? null;
   if (!member) {
     window.location.replace(signInUrl("/account"));

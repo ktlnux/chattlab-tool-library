@@ -56,7 +56,7 @@ const { machineId, machineName } = Astro.props;
 </div>
 
 <script>
-  import { pb, currentMember, errorMessage, signInUrl } from "../lib/client";
+  import { pb, currentMember, memberReady, errorMessage, signInUrl } from "../lib/client";
 
   for (const root of document.querySelectorAll<HTMLElement>(".log-maintenance")) {
     const dialog = root.querySelector("dialog")!;
@@ -69,7 +69,8 @@ const { machineId, machineName } = Astro.props;
       return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
     };
 
-    root.querySelector(".open-log")!.addEventListener("click", () => {
+    root.querySelector(".open-log")!.addEventListener("click", async () => {
+      await memberReady;
       if (!currentMember()) {
         window.location.assign(signInUrl(window.location.pathname + "#history"));
         return;

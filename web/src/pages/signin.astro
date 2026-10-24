@@ -17,7 +17,10 @@ import Note from "../components/ui/Note.astro";
           <span class="label">Password</span>
           <button type="button" class="link" data-show="reset">Forgot password?</button>
         </span>
-        <input class="input" type="password" name="password" required autocomplete="current-password" />
+        <span class="password">
+          <input class="input" type="password" name="password" required autocomplete="current-password" />
+          <button type="button" class="link reveal" aria-pressed="false">Show</button>
+        </span>
       </label>
       <div class="error" hidden><Note variant="error"><span class="error-text"></span></Note></div>
       <Button type="submit" class="submit">Sign in</Button>
@@ -34,12 +37,11 @@ import Note from "../components/ui/Note.astro";
       </label>
       <label class="field">
         <span class="label">Password</span>
-        <input class="input" type="password" name="password" required minlength="8" autocomplete="new-password" />
+        <span class="password">
+          <input class="input" type="password" name="password" required minlength="8" autocomplete="new-password" />
+          <button type="button" class="link reveal" aria-pressed="false">Show</button>
+        </span>
         <span class="hint muted">At least 8 characters.</span>
-      </label>
-      <label class="field">
-        <span class="label">Confirm password</span>
-        <input class="input" type="password" name="passwordConfirm" required minlength="8" autocomplete="new-password" />
       </label>
       <div class="error" hidden><Note variant="error"><span class="error-text"></span></Note></div>
       <Button type="submit" class="submit">Create account</Button>
@@ -70,7 +72,7 @@ import Note from "../components/ui/Note.astro";
 
 <script>
   import { ClientResponseError } from "pocketbase";
-  import { pb, currentMember, missingContactInfo, errorMessage, type Member } from "../lib/client";
+  import { pb, memberReady, missingContactInfo, errorMessage, LAST_EMAIL, type Member } from "../lib/client";
 
   const forms = {
     signin: document.getElementById("signin") as HTMLFormElement,
@@ -93,6 +95,28 @@ import Note from "../components/ui/Note.astro";
 
   for (const button of document.querySelectorAll<HTMLButtonElement>("[data-show]")) {
     button.addEventListener("click", () => show(button.dataset.show as keyof typeof forms));
+  }
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>(".reveal")) {
+    button.addEventListener("click", () => {
+      const input = button.previousElementSibling as HTMLInputElement;
+      const showing = input.type === "password";
+      input.type = showing ? "text" : "password";
+      button.textContent = showing ? "Hide" : "Show";
+      button.setAttribute("aria-pressed", String(showing));
+      input.focus();
+    });
+  }
+
+  // Signing back in on this device only needs the password.
+  let lastEmail = "";
+  try {
+    lastEmail = localStorage.getItem(LAST_EMAIL) ?? "";
+  } catch {}
+  if (lastEmail) {
+    forms.signin.querySelector<HTMLInputElement>("[name=email]")!.value = lastEmail;
+    forms.reset.querySelector<HTMLInputElement>("[name=email]")!.value = lastEmail;
+    forms.signin.querySelector<HTMLInputElement>("[name=password]")!.focus();
   }
 
   function showError(form: HTMLFormElement, message: string) {
@@ -123,14 +147,13 @@ import Note from "../components/ui/Note.astro";
     }
   }
 
-  if (currentMember()) finish(currentMember()!);
+  memberReady.then((member) => member && finish(member));
 
   function read(form: HTMLFormElement) {
     const data = new FormData(form);
     return {
       email: String(data.get("email") ?? "").trim(),
       password: String(data.get("password") ?? ""),
-      passwordConfirm: String(data.get("passwordConfirm") ?? ""),
     };
   }
 
@@ -152,11 +175,11 @@ import Note from "../components/ui/Note.astro";
 
   forms.signup.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const { email, password, passwordConfirm } = read(forms.signup);
-    if (password !== passwordConfirm) return showError(forms.signup, "The passwords don't match.");
+    const { email, password } = read(forms.signup);
     try {
       const auth = await busy(forms.signup, "Creating account…", async () => {
-        await pb.collection("users").create({ email, password, passwordConfirm });
+        // The "Show" button stands in for typing the password twice.
+        await pb.collection("users").create({ email, password, passwordConfirm: password });
         return pb.collection("users").authWithPassword(email, password);
       });
       finish(auth.record as Member);
@@ -226,6 +249,22 @@ import Note from "../components/ui/Note.astro";
     font: inherit;
     color: var(--link);
     cursor: pointer;
+  }
+  .password {
+    position: relative;
+    display: block;
+  }
+  .password .input {
+    width: 100%;
+    padding-right: 64px;
+  }
+  .reveal {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    padding: 0 12px;
+    font-size: 13px;
   }
   .label-row .link,
   .hint {

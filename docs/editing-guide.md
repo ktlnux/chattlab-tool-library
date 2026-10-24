@@ -179,6 +179,11 @@ Members create their own account on the site's sign-in page with an email and pa
 someone up yourself, add a **users** record with their **email** and a password, fill in their
 details if you know them, and tell them the password (they can change it on their account page).
 
+**Members stay signed in.** Once someone signs in on a phone or computer, they stay signed in on
+it until they sign out, clear the browser's data, or don't use the site there for a year. On
+iPhones, a site added to the home screen keeps its own sign-in, separate from Safari. Changing a
+member's **password** in the dashboard signs them out everywhere.
+
 **Forgotten passwords.** Members can use **Forgot password?** on the sign-in page, which emails
 them a reset link. If that doesn't reach them, open their **users** record, set a new
 **password**, save, and tell them what it is. Accounts created back when members signed in with

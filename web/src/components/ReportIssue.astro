@@ -130,7 +130,7 @@ const { machineId, machineName, machineCode } = Astro.props;
 </div>
 
 <script>
-  import { pb, currentMember, refreshMember, missingContactInfo, errorMessage, signInUrl } from "../lib/client";
+  import { pb, currentMember, memberReady, refreshMember, missingContactInfo, errorMessage, signInUrl } from "../lib/client";
   import { fillContactFields, readContactFields } from "./contact-fields";
 
   for (const root of document.querySelectorAll<HTMLElement>(".report-issue")) {
@@ -172,6 +172,7 @@ const { machineId, machineName, machineCode } = Astro.props;
     }
 
     async function open() {
+      await memberReady;
       if (!currentMember()) {
         signInBox.querySelector<HTMLAnchorElement>(".signin-link")!.href = signInUrl();
         signInBox.hidden = false;

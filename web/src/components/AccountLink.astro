@@ -13,9 +13,9 @@
 </a>
 
 <script>
-  import { currentMember } from "../lib/client";
+  import { memberReady } from "../lib/client";
 
-  const member = currentMember();
+  const member = await memberReady;
   if (member) {
     const initials = `${member.first_name?.[0] ?? ""}${member.last_name?.[0] ?? ""}`.toUpperCase() || member.email[0].toUpperCase();
     for (const link of document.querySelectorAll<HTMLAnchorElement>(".account-link")) {
