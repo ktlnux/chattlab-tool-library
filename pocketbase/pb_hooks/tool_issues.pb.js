@@ -1,10 +1,15 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-// "Report an issue" from the machine page, by a visitor or a signed-in member.
+// "Report an issue" from the machine page, by a signed-in member.
 // A custom route rather than a normal create, because the reporter's contact details go into
-// hidden (superuser-only) fields, which PocketBase won't accept from a visitor directly.
+// hidden (superuser-only) fields, which PocketBase won't accept from a member directly.
+// Reports from members who aren't trusted wait for a steward's approval.
 routerAdd("POST", "/api/tool-issues/report", (e) => {
-  const { displayName, actor, syncMachineStatus } = require(`${__hooks}/lib/issues.js`);
+  const { displayName, syncMachineStatus } = require(`${__hooks}/lib/issues.js`);
+  const user = e.auth;
+  if (!user || user.collection().name !== "users") {
+    throw new UnauthorizedError("Sign in to report an issue.");
+  }
   const body = e.requestInfo().body;
   const text = (key) => String(body[key] ?? "").trim();
 
@@ -24,37 +29,20 @@ routerAdd("POST", "/api/tool-issues/report", (e) => {
     throw new BadRequestError("Please choose whether the machine can still be used.");
   }
 
-  // Contact details typed into the form, overridden by a signed-in member's saved profile.
+  // Contact details come from the member's profile, copied so the report keeps them even if
+  // the profile changes later.
   const contact = {
-    first: text("reporter_first_name"),
-    last: text("reporter_last_name"),
-    email: text("reporter_email"),
-    phone: text("reporter_phone"),
-    method: text("reporter_preferred_contact"),
-    discord: text("reporter_discord"),
+    first: user.getString("first_name"),
+    last: user.getString("last_name"),
+    email: user.email(),
+    phone: user.getString("phone"),
+    method: user.getString("preferred_contact"),
+    discord: user.getString("discord_username"),
   };
-  const who = actor(e);
-  if (who.id) {
-    const user = e.auth;
-    const saved = {
-      first: user.getString("first_name"),
-      last: user.getString("last_name"),
-      email: user.email(),
-      phone: user.getString("phone"),
-      method: user.getString("preferred_contact"),
-      discord: user.getString("discord_username"),
-    };
-    for (const key of Object.keys(saved)) {
-      if (saved[key]) contact[key] = saved[key];
-    }
+  if (!contact.first || !contact.last || !contact.method || !contact[contact.method]) {
+    throw new BadRequestError("Please finish your profile on your account page first, so a steward can reach you.");
   }
-  if (!contact.first || !contact.last) throw new BadRequestError("Please give your first and last name.");
-  if (!["email", "phone", "discord"].includes(contact.method)) {
-    throw new BadRequestError("Please choose how a steward should contact you.");
-  }
-  if (!contact[contact.method]) {
-    throw new BadRequestError(`Please give your ${contact.method === "discord" ? "Discord username" : contact.method} so a steward can reach you.`);
-  }
+  const approved = user.getBool("trusted");
 
   const issue = new Record(e.app.findCollectionByNameOrId("tool_issues"));
   issue.load({
@@ -63,7 +51,8 @@ routerAdd("POST", "/api/tool-issues/report", (e) => {
     details: text("details"),
     severity: severity,
     status: "needs_repair",
-    reporter: who.id,
+    approved: approved,
+    reporter: user.id,
     reporter_display: displayName(contact.first, contact.last),
     reporter_first_name: contact.first,
     reporter_last_name: contact.last,
@@ -74,21 +63,24 @@ routerAdd("POST", "/api/tool-issues/report", (e) => {
   });
   e.app.save(issue); // validates field types and limits
 
-  if (severity === "out_of_operation") syncMachineStatus(e.app, machine.id);
+  if (approved && severity === "out_of_operation") syncMachineStatus(e.app, machine.id);
 
   return e.json(200, {
     id: issue.id,
     title: issue.getString("title"),
     severity: severity,
     status: issue.getString("status"),
+    approved: approved,
     reporter_display: issue.getString("reporter_display"),
   });
 });
 
-// An editor creating an issue in the dashboard: fill in the public name and machine status.
+// An editor creating an issue in the dashboard: approve it, and fill in the public name and
+// machine status.
 onRecordCreateRequest((e) => {
   const { STEWARD, displayName, syncMachineStatus } = require(`${__hooks}/lib/issues.js`);
   const issue = e.record;
+  issue.set("approved", true);
   if (!issue.getString("reporter_display")) {
     const first = issue.getString("reporter_first_name");
     issue.set("reporter_display", first ? displayName(first, issue.getString("reporter_last_name")) : STEWARD);
@@ -107,10 +99,19 @@ onRecordUpdateRequest((e) => {
   const before = issue.original();
   const statusChanged = before.getString("status") !== issue.getString("status");
   const severityChanged = before.getString("severity") !== issue.getString("severity");
+  const approvalChanged = before.getBool("approved") !== issue.getBool("approved");
   if (statusChanged) setClosedAt(issue);
 
   e.next();
 
+  if (approvalChanged && issue.getBool("approved")) {
+    const update = new Record(e.app.findCollectionByNameOrId("issue_updates"));
+    update.set("issue", issue.id);
+    update.set("machine", issue.getString("machine"));
+    update.set("author_display", STEWARD);
+    update.set("comment", "Reviewed and approved.");
+    e.app.save(update);
+  }
   if (statusChanged) {
     const update = new Record(e.app.findCollectionByNameOrId("issue_updates"));
     update.set("issue", issue.id);
@@ -119,7 +120,7 @@ onRecordUpdateRequest((e) => {
     update.set("new_status", issue.getString("status"));
     e.app.save(update);
   }
-  if ((statusChanged || severityChanged) &&
+  if ((statusChanged || severityChanged || approvalChanged) &&
       (issue.getString("severity") === "out_of_operation" || before.getString("severity") === "out_of_operation")) {
     syncMachineStatus(e.app, issue.getString("machine"));
   }

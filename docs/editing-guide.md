@@ -97,9 +97,16 @@ Prefer uploading a PDF when the manufacturer allows it: outside links can move o
 
 ## Tool issues
 
-When a machine's status is **working**, its page shows a **Report an issue** button. Anyone can
-use it. Visitors give their name, email, optional phone and preferred contact method (email,
-phone or Discord); signed-in members only fill in what's missing from their account.
+When a machine's status is **working**, its page shows a **Report an issue** button. Members
+must be signed in to use it (visitors are asked to sign in). The report takes the member's name
+and contact details from their account, asking for anything missing first.
+
+**New reports wait for your approval** unless the member is trusted (see
+[Roles and approvals](#roles-and-approvals)). Until you approve one, it shows on the site with a
+**Pending review** badge and **doesn't change the machine's status**, even if it says the machine
+can't be used. To approve it, open the issue in **tool_issues**, tick **approved** and save. That
+adds "Reviewed and approved" to its history and, if it's out of operation, updates the machine's
+status. If a report is spam, delete it.
 
 Each report becomes a **tool_issues** record:
 
@@ -109,12 +116,14 @@ Each report becomes a **tool_issues** record:
   **operational**.
 - **status**: **needs_repair** → **repair_in_progress** → **completed**. "Completed" means closed;
   **closed_at** is filled in automatically.
+- **approved**: ticked once a steward has approved it. Reports from trusted members, and issues
+  you create in the dashboard, are approved automatically.
 - **reporter_*** fields: the reporter's name and contact details. **Only editors can see these.**
   The site only ever shows "first name + last initial", e.g. "Kim R.". **reporter** links to their
-  member account if they were signed in.
+  member account.
 
-Nobody is notified when an issue comes in, so check **tool_issues** regularly (filter by
-`status != "completed"` to see open ones).
+Nobody is notified when an issue comes in, so check **tool_issues** regularly. Filter by
+`approved = false` to see reports waiting for review, or `status != "completed"` for open ones.
 
 **Working an issue.** Signed-in members (and you) can post updates from the issue's page on the
 site: a comment, a status change, or both. Closed issues can be reopened the same way. Each issue
@@ -129,8 +138,9 @@ has its own page, linked from the machine's "Open issues" list and its History. 
 | only **repair_in_progress** | repair_in_progress |
 | none | working |
 
-This only kicks in when such an issue changes, so a status you set by hand for another reason
-stays until then. Issues marked **operational** never change the machine's status.
+Only approved issues count. This only kicks in when such an issue changes, so a status you set
+by hand for another reason stays until then. Issues marked **operational** never change the
+machine's status.
 
 ## Maintenance log
 
@@ -145,6 +155,23 @@ Each machine page ends with a **History** timeline, most recent first: when the 
 added, edits made in the dashboard (from **machine_changes**, written automatically, listing which
 fields changed), maintenance, issues reported, and issue updates. People are shown as "first name +
 last initial"; edits made in the dashboard show as "Steward".
+
+## Roles and approvals
+
+Anyone can read the site without an account. Anything that adds to it needs one:
+
+| Role | Who | Can |
+|---|---|---|
+| **Editor** (superuser, "Steward") | 1–2 people, in the dashboard at `/_/` | Everything: edit machines, approve reports, manage members |
+| **Trusted member** | Members you've ticked **trusted** on | Report issues (published at once), post issue updates, log maintenance |
+| **Member** | Anyone who creates an account | Report issues (wait for approval), post issue updates, log maintenance |
+
+Issue updates and maintenance entries are published at once for every member; delete any that
+shouldn't be there.
+
+**To make someone trusted**, open their record in **users**, tick **trusted** and save. Untick it
+to go back to reviewing their reports. Members can't change this themselves. Their account page
+tells them when they're trusted.
 
 ## Member accounts
 

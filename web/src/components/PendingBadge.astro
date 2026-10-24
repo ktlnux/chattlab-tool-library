@@ -1,0 +1,11 @@
+---
+// Shown on tool issues a steward hasn't approved yet (see pocketbase/pb_hooks/tool_issues.pb.js).
+import Badge from "./ui/Badge.astro";
+
+interface Props {
+  size?: "small" | "medium";
+}
+const { size } = Astro.props;
+---
+
+<Badge variant="gray" size={size}>Pending review</Badge>

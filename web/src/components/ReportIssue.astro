@@ -1,8 +1,9 @@
 ---
 // "Report an issue" button and dialog for working machines. Reports become tool issues via
-// POST /api/tool-issues/report; one that takes the machine out of operation marks it out of
-// service (see pocketbase/pb_hooks/tool_issues.pb.js). Visitors give their name and contact
-// details; signed-in members only fill in what their profile is missing.
+// POST /api/tool-issues/report (see pocketbase/pb_hooks/tool_issues.pb.js). Only signed-in
+// members can report; visitors are asked to sign in. Members fill in whatever their profile is
+// missing. Reports from trusted members are approved at once, and one that takes the machine
+// out of operation marks it out of service; other reports wait for a steward's approval.
 import Button from "./ui/Button.astro";
 import Note from "./ui/Note.astro";
 import ContactFields from "./ContactFields.astro";
@@ -24,6 +25,20 @@ const { machineId, machineName, machineCode } = Astro.props;
   </Button>
 
   <dialog class="report-dialog" aria-labelledby="report-title">
+    <div class="report-signin" hidden>
+      <header>
+        <div>
+          <h2 class="heading-20">Report an issue</h2>
+          <p class="copy-14 muted">{machineName} · <span class="mono">{machineCode}</span></p>
+        </div>
+      </header>
+      <p class="copy-14 signin-text">Sign in or create an account to report an issue, so a steward can follow up with you.</p>
+      <footer>
+        <Button type="button" variant="secondary" class="cancel">Cancel</Button>
+        <Button href="/signin" class="signin-link">Sign in</Button>
+      </footer>
+    </div>
+
     <form class="report-form" novalidate>
       <header>
         <div>
@@ -81,11 +96,10 @@ const { machineId, machineName, machineCode } = Astro.props;
           <div class="reporter-intro">
             <h3 class="label">Your contact details</h3>
             <p class="label-12 muted">
-              So a steward can follow up. Only stewards can see these.{" "}
-              <span class="signin-hint"><a class="signin-link" href="/signin">Sign in</a> to skip this next time.</span>
+              So a steward can follow up. Only stewards can see these. They're saved to your account.
             </p>
           </div>
-          <ContactFields />
+          <ContactFields showEmail={false} />
         </div>
 
         <!-- Spam trap: hidden from people, filled in by bots. -->
@@ -130,6 +144,7 @@ const { machineId, machineName, machineCode } = Astro.props;
     const submit = root.querySelector<HTMLButtonElement>(".submit")!;
     const memberBox = root.querySelector<HTMLElement>(".reporter-member")!;
     const contactBox = root.querySelector<HTMLElement>(".reporter-form")!;
+    const signInBox = root.querySelector<HTMLElement>(".report-signin")!;
     let markedOutOfService = false;
 
     function showError(message: string) {
@@ -137,17 +152,13 @@ const { machineId, machineName, machineCode } = Astro.props;
       errorBox.hidden = false;
     }
 
-    // Visitors give full contact details; signed-in members with a complete profile skip them,
-    // and members missing something only see the contact fields, prefilled, without email.
+    // Members with a complete profile skip the contact details; members missing something see
+    // the contact fields, prefilled.
     function setUpReporter() {
       const member = currentMember();
       const complete = member && missingContactInfo(member).length === 0;
       memberBox.hidden = !complete;
       contactBox.hidden = !!complete;
-      contactBox.querySelector<HTMLElement>(".signin-hint")!.hidden = !!member;
-      contactBox.querySelector<HTMLAnchorElement>(".signin-link")!.href = signInUrl();
-      const emailField = contactBox.querySelector<HTMLElement>("[name=email]")!.closest<HTMLElement>(".field")!;
-      emailField.hidden = !!member;
       if (member) {
         root.querySelector(".member-name")!.textContent = `${member.first_name} ${member.last_name}`;
         root.querySelector(".member-method")!.textContent =
@@ -161,6 +172,15 @@ const { machineId, machineName, machineCode } = Astro.props;
     }
 
     async function open() {
+      if (!currentMember()) {
+        signInBox.querySelector<HTMLAnchorElement>(".signin-link")!.href = signInUrl();
+        signInBox.hidden = false;
+        form.hidden = true;
+        done.hidden = true;
+        dialog.showModal();
+        return;
+      }
+      signInBox.hidden = true;
       form.reset();
       form.hidden = false;
       done.hidden = true;
@@ -183,7 +203,7 @@ const { machineId, machineName, machineCode } = Astro.props;
 
     root.querySelector(".open-report")!.addEventListener("click", open);
     root.querySelector(".close")!.addEventListener("click", close);
-    root.querySelector(".cancel")!.addEventListener("click", close);
+    for (const button of root.querySelectorAll(".cancel")) button.addEventListener("click", close);
     root.querySelector(".done")!.addEventListener("click", close);
     // Clicking the dimmed backdrop closes the dialog.
     dialog.addEventListener("click", (event) => {
@@ -204,10 +224,11 @@ const { machineId, machineName, machineCode } = Astro.props;
       if (!usable) return showError("Please choose whether the machine can still be used.");
 
       const member = currentMember();
+      if (!member) return window.location.assign(signInUrl());
       const contact = readContactFields(form);
-      const needsContact = !member || missingContactInfo(member).length > 0;
+      const needsContact = missingContactInfo(member).length > 0;
       if (needsContact) {
-        const missing = missingContactInfo({ ...contact, email: member ? member.email : contact.email ?? "" });
+        const missing = missingContactInfo({ ...contact, email: member.email });
         if (missing.length > 0) return showError(`Please add your ${missing.join(", ")}.`);
       }
 
@@ -216,11 +237,11 @@ const { machineId, machineName, machineCode } = Astro.props;
       submit.textContent = "Sending…";
       try {
         // Save what a signed-in member just filled in, so they aren't asked again.
-        if (member && needsContact) {
+        if (needsContact) {
           const { email: _email, ...profile } = contact;
           await pb.collection("users").update(member.id, profile);
         }
-        const issue = await pb.send<{ id: string }>("/api/tool-issues/report", {
+        const issue = await pb.send<{ id: string; approved: boolean }>("/api/tool-issues/report", {
           method: "POST",
           body: {
             machine: machineId,
@@ -228,18 +249,14 @@ const { machineId, machineName, machineCode } = Astro.props;
             details: String(data.get("details") ?? "").trim(),
             severity: disabled ? "out_of_operation" : "operational",
             website: data.get("website"),
-            reporter_first_name: contact.first_name,
-            reporter_last_name: contact.last_name,
-            reporter_email: contact.email ?? "",
-            reporter_phone: contact.phone,
-            reporter_preferred_contact: contact.preferred_contact,
-            reporter_discord: contact.discord_username,
           },
         });
-        markedOutOfService = disabled;
-        doneText.textContent = disabled
-          ? `Your report has been recorded for the stewards, and this machine is now marked out of service.`
-          : `Your report has been recorded for the stewards.`;
+        markedOutOfService = disabled && issue.approved;
+        doneText.textContent = !issue.approved
+          ? `Your report has been sent to the stewards, who'll review it shortly.`
+          : disabled
+            ? `Your report has been recorded for the stewards, and this machine is now marked out of service.`
+            : `Your report has been recorded for the stewards.`;
         root.querySelector<HTMLAnchorElement>(".issue-link")!.href = `/issues/${issue.id}`;
         form.hidden = true;
         done.hidden = false;
@@ -400,6 +417,13 @@ const { machineId, machineName, machineCode } = Astro.props;
   }
   .report-done {
     padding-top: 20px;
+  }
+  .report-signin[hidden] {
+    display: none;
+  }
+  .signin-text {
+    margin: 0;
+    padding: 16px 20px 20px;
   }
   .report-done > :global(.note) {
     margin: 0 20px 20px;

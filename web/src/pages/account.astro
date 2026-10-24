@@ -10,6 +10,7 @@ import ContactFields from "../components/ContactFields.astro";
     <header>
       <h1 class="heading-24">Your account</h1>
       <p class="copy-14 muted">Signed in as <strong class="email"></strong></p>
+      <p class="copy-14 muted trusted" hidden>Trusted member: your issue reports are published without review.</p>
     </header>
 
     <div class="welcome" hidden>
@@ -71,6 +72,7 @@ import ContactFields from "../components/ContactFields.astro";
     window.location.replace(signInUrl("/account"));
   } else {
     root.querySelector(".email")!.textContent = member.email;
+    root.querySelector<HTMLElement>(".trusted")!.hidden = !member.trusted;
     root.querySelector<HTMLElement>(".welcome")!.hidden = missingContactInfo(member).length === 0;
     fillContactFields(form, member);
     root.hidden = false;

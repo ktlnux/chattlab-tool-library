@@ -14,6 +14,8 @@ export interface Member extends RecordModel {
   phone: string;
   preferred_contact: ContactMethod | "";
   discord_username: string;
+  /** Set by editors: this member's issue reports skip review. */
+  trusted: boolean;
 }
 
 export const CONTACT_LABELS: Record<ContactMethod, string> = {

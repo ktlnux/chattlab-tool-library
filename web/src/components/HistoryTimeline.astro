@@ -2,6 +2,7 @@
 // Vertical timeline of a machine's history, most recent first. Shows the latest few events
 // and a button for the rest (all are shown without JavaScript).
 import IssueStatusBadge from "./IssueStatusBadge.astro";
+import PendingBadge from "./PendingBadge.astro";
 import LocalTime from "./LocalTime.astro";
 import type { HistoryEvent } from "../lib/pb";
 
@@ -32,6 +33,7 @@ const kindLabels: Record<HistoryEvent["kind"], string> = {
             </div>
             <p class="title">{event.href ? <a href={event.href}>{event.title}</a> : event.title}</p>
             {event.status && event.status !== "completed" && <IssueStatusBadge status={event.status} size="small" />}
+            {event.pending && <PendingBadge size="small" />}
             {event.body && <p class="body copy-14">{event.body}</p>}
             {event.actor && <p class="actor label-12 subtle">by {event.actor}</p>}
           </div>

@@ -98,6 +98,8 @@ export interface ToolIssue extends BaseRecord {
   severity: IssueSeverity;
   status: IssueStatus;
   closed_at: string;
+  /** False until a steward approves it; unapproved issues don't change the machine's status. */
+  approved: boolean;
   reporter_display: string;
   expand?: { machine?: Machine };
 }
@@ -136,6 +138,8 @@ export interface HistoryEvent {
   actor?: string;
   href?: string;
   status?: IssueStatus;
+  /** An issue report a steward hasn't approved yet. */
+  pending?: boolean;
 }
 
 /** PocketBase dates ("2026-10-22 22:21:31.123Z") as ISO strings, or "" when unset. */
@@ -231,6 +235,7 @@ export async function getMachineHistory(machine: Machine): Promise<HistoryEvent[
       body: i.severity === "out_of_operation" ? "Reported as taking the machine out of operation." : undefined,
       actor: i.reporter_display,
       href: `/issues/${i.id}`,
+      pending: !i.approved,
     })),
     ...updates.map((u): HistoryEvent => {
       const issueTitle = u.expand?.issue?.title ?? "issue";

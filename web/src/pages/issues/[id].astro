@@ -4,6 +4,7 @@ import Badge from "../../components/ui/Badge.astro";
 import Button from "../../components/ui/Button.astro";
 import Note from "../../components/ui/Note.astro";
 import IssueStatusBadge from "../../components/IssueStatusBadge.astro";
+import PendingBadge from "../../components/PendingBadge.astro";
 import LocalTime from "../../components/LocalTime.astro";
 import { getIssue, isoDate, ISSUE_STATUS_LABELS, SEVERITY_LABELS } from "../../lib/pb";
 
@@ -35,12 +36,18 @@ const closed = issue.status === "completed";
     <div class="badges">
       <IssueStatusBadge status={issue.status} />
       <Badge variant={issue.severity === "out_of_operation" ? "red" : "gray"}>{SEVERITY_LABELS[issue.severity]}</Badge>
+      {!issue.approved && <PendingBadge />}
     </div>
     <h1>{issue.title}</h1>
     <p class="copy-14 muted">
       Reported by {issue.reporter_display || "a member"} on <LocalTime iso={isoDate(issue.created)} />
       {machine && <> · <a href={`/m/${machine.code}`}>{machine.name}</a> <span class="mono">{machine.code}</span></>}
     </p>
+    {
+      !issue.approved && (
+        <Note>Not yet reviewed by a steward. The machine's status won't change until it is.</Note>
+      )
+    }
   </header>
 
   <ol class="thread">

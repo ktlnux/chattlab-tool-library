@@ -25,14 +25,15 @@ function setClosedAt(issue) {
   issue.set("closed_at", issue.getString("status") === "completed" ? new DateTime() : "");
 }
 
-// A machine's status follows its open issues that take it out of operation:
+// A machine's status follows its open, approved issues that take it out of operation:
 // any still needing repair -> out of service; otherwise any being repaired -> repair in
 // progress; none open -> working. Only called when such an issue changes, so a status an
-// editor set by hand for other reasons is left alone until then.
+// editor set by hand for other reasons is left alone until then. Issues awaiting a steward's
+// approval never change it.
 function syncMachineStatus(app, machineId) {
   const open = app.findRecordsByFilter(
     "tool_issues",
-    "machine = {:machine} && severity = 'out_of_operation' && status != 'completed'",
+    "machine = {:machine} && approved = true && severity = 'out_of_operation' && status != 'completed'",
     "",
     0,
     0,
